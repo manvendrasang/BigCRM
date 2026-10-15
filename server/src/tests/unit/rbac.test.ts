@@ -2,10 +2,10 @@ import { migrate } from '../../db/migrate.ts';
 await migrate();
 import { assertOwnerOnlyInvariant, canAssignRole, can, ROLES, ROLE_PERMISSIONS, wouldOrphanOwners, assignableRoles } from '../../services/rbac.ts';
 let _p=0; const _f:string[]=[];
-const T=(l:string,c:boolean)=>{ if(c){_p++;console.log(`  [PASS] ${l}`);} else {_f.push(l);console.log(`  [FAIL] ${l}`);} };
-try { assertOwnerOnlyInvariant(); console.log('  [PASS] owner-only invariant holds'); } catch(e:any){ console.log('  [FAIL]', e.message); }
+const T=(l:string,c:boolean)=>{ if(c){_p++;console.log(` [PASS] ${l}`);} else {_f.push(l);console.log(` [FAIL] ${l}`);} };
+try { assertOwnerOnlyInvariant(); console.log(' [PASS] owner-only invariant holds'); } catch(e:any){ console.log(' [FAIL]', e.message); }
 const perms=(r:string)=>ROLE_PERMISSIONS[r as 'admin'].size;
-console.log('  matrix sizes:', Object.fromEntries(ROLES.map(r=>[r,perms(r)])));
+console.log(' matrix sizes:', Object.fromEntries(ROLES.map(r=>[r,perms(r)])));
 T('owner !== admin (legacy bug B29 fixed)', perms('owner') > perms('admin'));
 T('owner can delete org', can('owner','organization.delete'));
 T('admin CANNOT delete org', !can('admin','organization.delete'));
@@ -17,8 +17,8 @@ T('viewer holds no users.invite -> no assignable roles', assignableRoles('viewer
 T('manager has no users.invite -> nothing assignable', assignableRoles('manager').length===0);
 // Isolate the rank logic from the permission gate: canAssignRole is what decides order.
 T('manager rank-wise could assign viewer+sales',
-  ['viewer','sales'].every(r=>canAssignRole('manager',null,r as 'viewer'))
-  && !canAssignRole('manager',null,'manager') && !canAssignRole('manager',null,'admin') && !canAssignRole('manager',null,'owner'));
+ ['viewer','sales'].every(r=>canAssignRole('manager',null,r as 'viewer'))
+ && !canAssignRole('manager',null,'manager') && !canAssignRole('manager',null,'admin') && !canAssignRole('manager',null,'owner'));
 T('admin may NOT assign owner', !assignableRoles('admin').includes('owner'));
 T('admin may NOT assign admin (peer)', !assignableRoles('admin').includes('admin'));
 T('owner may NOT assign owner (no peer)', !assignableRoles('owner').includes('owner'));

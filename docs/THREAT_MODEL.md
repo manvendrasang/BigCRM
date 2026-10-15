@@ -3,8 +3,8 @@
 STRIDE, applied per trust boundary. Severity reflects impact **and** likelihood
 in this system's context.
 
-Legend — **Status**: `Mitigated` (control implemented + tested) · `Partial`
-(control exists, not complete) · `Open` (no control) · `Accepted`.
+Legend -- **Status**: `Mitigated` (control implemented + tested) - `Partial`
+(control exists, not complete) - `Open` (no control) - `Accepted`.
 
 ---
 
@@ -29,7 +29,7 @@ Legend — **Status**: `Mitigated` (control implemented + tested) · `Partial`
 | E-04 | Info disclosure | TLS downgrade | High | HSTS, redirect, TLS 1.2+ policy | Partial (infra) |
 | E-05 | Elevation | Origin bypass straight to app | Critical | App in private subnets, no public IP | Open (infra) |
 
-## 3. Application / API (B3) — the primary battleground
+## 3. Application / API (B3) -- the primary battleground
 
 ### Authentication
 | # | STRIDE | Threat | Severity | Control | Status |
@@ -43,15 +43,15 @@ Legend — **Status**: `Mitigated` (control implemented + tested) · `Partial`
 | A-07 | Elevation | Refresh-token theft and replay | Critical | Single-use rotation; reuse revokes the family | Mitigated |
 | A-08 | Spoofing | Revoked session still usable | Critical | Revocation checked every request | Mitigated (`S9`) |
 | A-09 | DoS | Session table growth | Medium | Bounded per user; absolute expiry | Mitigated |
-| A-10 | Spoofing | MFA bypass | High | Replay window, single-use hashed recovery codes | Partial (no column — BIG-10) |
+| A-10 | Spoofing | MFA bypass | High | Replay window, single-use hashed recovery codes | Partial (no column -- BIG-10) |
 
 ### Authorization & tenancy
 | # | STRIDE | Threat | Severity | Control | Status |
 |---|---|---|---|---|---|
 | Z-01 | Elevation | Tenant escape via `organizationId` | Critical | `TenantScope` + runtime predicate guard | Mitigated (`S1`) |
 | Z-02 | Elevation | IDOR on `/contacts/:id` | Critical | `organization_id` on every query; 404 not 403 | Mitigated (`S2`) |
-| Z-03 | Elevation | Viewer → Admin | Critical | RBAC + hierarchy + self-escalation refusal | Mitigated (`S3`) |
-| Z-04 | Elevation | Admin → Owner | Critical | Owner-exclusive permissions; owner ungrantable | Mitigated |
+| Z-03 | Elevation | Viewer -> Admin | Critical | RBAC + hierarchy + self-escalation refusal | Mitigated (`S3`) |
+| Z-04 | Elevation | Admin -> Owner | Critical | Owner-exclusive permissions; owner ungrantable | Mitigated |
 | Z-05 | Denial | Removing the last owner | High | `wouldOrphanOwners()` | Mitigated |
 | Z-06 | Info disclosure | Existence leak via 403 vs 404 | Medium | Uniform 404 | Mitigated |
 | Z-07 | Elevation | Role change leaves old authority live | High | Sessions revoked on role change | Mitigated |
@@ -94,8 +94,8 @@ Legend — **Status**: `Mitigated` (control implemented + tested) · `Partial`
 |---|---|---|---|---|---|
 | V-01 | DoS | Slow query holds a connection | High | `statement_timeout`; bounded pool | Mitigated |
 | V-02 | DoS | Legacy per-query connection storm | High | Pooled driver | Mitigated |
-| V-03 | DoS | No pagination → unbounded result sets | High | Cursor pagination built | Partial (routes pending) |
-| V-04 | DoS | Global lock serialising all DB work | High | Removed — no module-level DB lock | Mitigated |
+| V-03 | DoS | No pagination -> unbounded result sets | High | Cursor pagination built | Partial (routes pending) |
+| V-04 | DoS | Global lock serialising all DB work | High | Removed -- no module-level DB lock | Mitigated |
 | V-05 | DoS | Worker death | Medium | Graceful shutdown; reconnect | Partial |
 
 ## 4. Database (B4)
@@ -117,7 +117,7 @@ Legend — **Status**: `Mitigated` (control implemented + tested) · `Partial`
 | O-03 | Elevation | Permanent download link | High | Presigned URL ≤5 min | Open (provider) |
 | O-04 | Tampering | Overwrite another org's object | High | Server-side key derivation; no user-supplied path | Mitigated |
 | O-05 | Info disclosure | Unencrypted objects | High | SSE-KMS | Open (infra) |
-| O-06 | Repudiation | Unlogged access | Medium | S3 data events → CloudTrail | Open (infra) |
+| O-06 | Repudiation | Unlogged access | Medium | S3 data events -> CloudTrail | Open (infra) |
 | O-07 | Tampering | Object deleted by app credentials | Medium | Separate read/write/delete roles | Open (infra) |
 
 ## 6. CI/CD (B7)
@@ -154,11 +154,11 @@ Legend — **Status**: `Mitigated` (control implemented + tested) · `Partial`
 
 ## 9. Abuse cases explicitly rejected
 
-- Login 10,000× from one IP → per-IP **and** per-account limits + lockout
-- Enumerate 1M emails via `/forgot` → identical response, no token row created
-- Replay an invitation for a real user → refused; identity must be proven
-- Export 100k contacts as a viewer → `reports.export` is admin+
-- Move a deal into another org's pipeline → composite FK + tenant guard
-- Attach a contact to another org's company → tenant guard, cross-tenant row unreachable
-- Page through with a forged cursor → signature check fails → 400
-- Upload `shell.php` renamed to `.png` → signature mismatch → rejected
+- Login 10,000× from one IP -> per-IP **and** per-account limits + lockout
+- Enumerate 1M emails via `/forgot` -> identical response, no token row created
+- Replay an invitation for a real user -> refused; identity must be proven
+- Export 100k contacts as a viewer -> `reports.export` is admin+
+- Move a deal into another org's pipeline -> composite FK + tenant guard
+- Attach a contact to another org's company -> tenant guard, cross-tenant row unreachable
+- Page through with a forged cursor -> signature check fails -> 400
+- Upload `shell.php` renamed to `.png` -> signature mismatch -> rejected

@@ -1,77 +1,77 @@
-# BigCRM — local stack
+# BigCRM -- local stack
 #
 # Real PostgreSQL, exactly as production uses it. No PGlite, no in-memory
 # emulation: migrations, foreign keys, CHECK constraints, triggers and
 # transactions are genuinely exercised.
 #
-#   docker compose up -d db
-#   DATABASE_URL=postgres://bigcrm:bigcrm_dev_password@localhost:5432/bigcrm npm run migrate
+# docker compose up -d db
+# DATABASE_URL=postgres://bigcrm:bigcrm_dev_password@localhost:5432/bigcrm npm run migrate
 #
 # `.env.example` values are development-only. Never point this at anything real.
 
 services:
-  db:
-    image: postgres:17-alpine
-    container_name: bigcrm-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: bigcrm
-      POSTGRES_PASSWORD: bigcrm_dev_password
-      POSTGRES_DB: bigcrm
-      # Deterministic collation so ORDER BY is stable across environments.
-      POSTGRES_INITDB_ARGS: '--data-checksums'
-    ports:
-      - '127.0.0.1:5432:5432'   # loopback only — never 0.0.0.0 (RULE 68)
-    volumes:
-      - bigcrm_pgdata:/var/lib/postgresql/data
-    command:
-      - postgres
-      # RULE 70: bound the connection count so the app pool cannot exhaust it.
-      - -c
-      - max_connections=100
-      - -c
-      - log_min_duration_statement=500
-      - -c
-      - log_connections=on
-      - -c
-      - log_disconnections=on
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U bigcrm -d bigcrm']
-      interval: 10s
-      timeout: 5s
-      retries: 5
+ db:
+ image: postgres:17-alpine
+ container_name: bigcrm-db
+ restart: unless-stopped
+ environment:
+ POSTGRES_USER: bigcrm
+ POSTGRES_PASSWORD: bigcrm_dev_password
+ POSTGRES_DB: bigcrm
+ # Deterministic collation so ORDER BY is stable across environments.
+ POSTGRES_INITDB_ARGS: '--data-checksums'
+ ports:
+ - '127.0.0.1:5432:5432' # loopback only -- never 0.0.0.0 (RULE 68)
+ volumes:
+ - bigcrm_pgdata:/var/lib/postgresql/data
+ command:
+ - postgres
+ # RULE 70: bound the connection count so the app pool cannot exhaust it.
+ - -c
+ - max_connections=100
+ - -c
+ - log_min_duration_statement=500
+ - -c
+ - log_connections=on
+ - -c
+ - log_disconnections=on
+ healthcheck:
+ test: ['CMD-SHELL', 'pg_isready -U bigcrm -d bigcrm']
+ interval: 10s
+ timeout: 5s
+ retries: 5
 
-  # Optional: Mailpit captures outbound email locally instead of the console
-  # provider, so verification and reset links can actually be clicked.
-  mail:
-    image: axllent/mailpit:latest
-    container_name: bigcrm-mail
-    restart: unless-stopped
-    ports:
-      - '127.0.0.1:8025:8025'   # web UI
-      - '127.0.0.1:1025:1025'   # SMTP
-    environment:
-      MP_SMTP_AUTH_ACCEPT_ANY: 1
-      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+ # Optional: Mailpit captures outbound email locally instead of the console
+ # provider, so verification and reset links can actually be clicked.
+ mail:
+ image: axllent/mailpit:latest
+ container_name: bigcrm-mail
+ restart: unless-stopped
+ ports:
+ - '127.0.0.1:8025:8025' # web UI
+ - '127.0.0.1:1025:1025' # SMTP
+ environment:
+ MP_SMTP_AUTH_ACCEPT_ANY: 1
+ MP_SMTP_AUTH_ALLOW_INSECURE: 1
 
-  # Optional: LocalStack KMS so the `kms` field-encryption provider runs
-  # locally with no AWS account. Opt-in via profile — a plain `compose up`
-  # never pulls it: `docker compose --profile kms up -d kms`. See
-  # server/.env.example for the key ceremony (create key, generate data key,
-  # store the ciphertext in KMS_MFA_KEY_CIPHERTEXT).
-  kms:
-    image: localstack/localstack:4.3
-    container_name: bigcrm-kms
-    profiles: ['kms']
-    ports:
-      - '127.0.0.1:4566:4566'   # loopback only — never 0.0.0.0 (RULE 68)
-    environment:
-      SERVICES: kms
-    volumes:
-      - bigcrm_kmsdata:/var/lib/localstack
+ # Optional: LocalStack KMS so the `kms` field-encryption provider runs
+ # locally with no AWS account. Opt-in via profile -- a plain `compose up`
+ # never pulls it: `docker compose --profile kms up -d kms`. See
+ # server/.env.example for the key ceremony (create key, generate data key,
+ # store the ciphertext in KMS_MFA_KEY_CIPHERTEXT).
+ kms:
+ image: localstack/localstack:4.3
+ container_name: bigcrm-kms
+ profiles: ['kms']
+ ports:
+ - '127.0.0.1:4566:4566' # loopback only -- never 0.0.0.0 (RULE 68)
+ environment:
+ SERVICES: kms
+ volumes:
+ - bigcrm_kmsdata:/var/lib/localstack
 
 volumes:
-  bigcrm_pgdata:
-    driver: local
-  bigcrm_kmsdata:
-    driver: local
+ bigcrm_pgdata:
+ driver: local
+ bigcrm_kmsdata:
+ driver: local

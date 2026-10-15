@@ -14,15 +14,15 @@ import { env } from '../../config/env.ts';
 let pass = 0;
 const fails: string[] = [];
 const T = (l: string, c: boolean, x?: unknown): void => {
-  const detail = x === undefined ? '' : ` -> ${String(x).slice(0, 130)}`;
-  if (c) { pass++; console.log(`  [PASS] ${l}`); } else { fails.push(l); console.log(`  [FAIL] ${l}${detail}`); }
+ const detail = x === undefined ? '' : ` -> ${String(x).slice(0, 130)}`;
+ if (c) { pass++; console.log(` [PASS] ${l}`); } else { fails.push(l); console.log(` [FAIL] ${l}${detail}`); }
 };
 
 const C = { ip: '10.0.0.9', userAgent: 'readonly-test/1.0', requestId: 'req-ro' };
 
 await registerUser({
-  name: 'RO User', email: 'ro@corp.io', password: 'ReadOnly-Test!42',
-  organizationName: 'RO Ltd', client: C,
+ name: 'RO User', email: 'ro@corp.io', password: 'ReadOnly-Test!42',
+ organizationName: 'RO Ltd', client: C,
 });
 
 // Force read-only mode on.
@@ -41,38 +41,38 @@ if (login.kind !== 'ok') throw new Error('login failed');
 const token = login.accessToken;
 
 async function call(method: string, path: string): Promise<{ status: number; body: string }> {
-  const res = await fetch(`${base}${path}`, {
-    method,
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-  });
-  return { status: res.status, body: await res.text().catch(() => '') };
+ const res = await fetch(`${base}${path}`, {
+ method,
+ headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+ });
+ return { status: res.status, body: await res.text().catch(() => '') };
 }
 
 console.log('\n=== reads pass, writes are refused ===');
 {
-  const get = await call('GET', '/api/v1/org/');
-  T('GET passes in read-only mode', get.status === 200, get.status);
+ const get = await call('GET', '/api/v1/org/');
+ T('GET passes in read-only mode', get.status === 200, get.status);
 
-  const post = await call('POST', '/api/v1/contacts');
-  T('POST refused with 503', post.status === 503, post.status);
-  T('and names read-only mode', post.body.includes('read-only'), post.body);
+ const post = await call('POST', '/api/v1/contacts');
+ T('POST refused with 503', post.status === 503, post.status);
+ T('and names read-only mode', post.body.includes('read-only'), post.body);
 
-  const patch = await call('PATCH', '/api/v1/org/');
-  T('PATCH refused with 503', patch.status === 503, patch.status);
+ const patch = await call('PATCH', '/api/v1/org/');
+ T('PATCH refused with 503', patch.status === 503, patch.status);
 
-  const del = await call('DELETE', '/api/v1/org/');
-  T('DELETE refused with 503', del.status === 503, del.status);
+ const del = await call('DELETE', '/api/v1/org/');
+ T('DELETE refused with 503', del.status === 503, del.status);
 
-  const head = await call('HEAD', '/health');
-  T('HEAD passes (read)', head.status === 200, head.status);
+ const head = await call('HEAD', '/health');
+ T('HEAD passes (read)', head.status === 200, head.status);
 }
 
 console.log('\n=== writes still work when the mode is off ===');
 {
-  (env as { security: { readOnlyMode: boolean } }).security.readOnlyMode = false;
-  const post = await call('POST', '/api/v1/contacts');
-  // 400 (validation) not 503 — the request reached the handler.
-  T('with the mode off, POST reaches the handler', post.status !== 503, post.status);
+ (env as { security: { readOnlyMode: boolean } }).security.readOnlyMode = false;
+ const post = await call('POST', '/api/v1/contacts');
+ // 400 (validation) not 503 -- the request reached the handler.
+ T('with the mode off, POST reaches the handler', post.status !== 503, post.status);
 }
 
 (env as { security: { readOnlyMode: boolean } }).security.readOnlyMode = original;

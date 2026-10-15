@@ -3,7 +3,7 @@
  *
  * RULE 118: `/health` and `/ready` report *state only*. No version strings, no
  * hostnames, no dependency DSNs, no counts that would help an attacker size the
- * deployment. `/metrics` is not public — see the guard below.
+ * deployment. `/metrics` is not public -- see the guard below.
  */
 import { Router } from 'express';
 import { env } from '../../config/env.ts';
@@ -19,7 +19,7 @@ const startedAt = Date.now();
 
 /** Liveness. Answers as long as the event loop can serve a request. */
 healthRouter.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok' });
+ res.status(200).json({ status: 'ok' });
 });
 
 /**
@@ -27,27 +27,27 @@ healthRouter.get('/health', (_req, res) => {
  * down so the load balancer stops sending traffic rather than serving errors.
  */
 healthRouter.get('/ready', asyncRoute(async (_req, res) => {
-  const checks: Record<string, 'ok' | 'unavailable'> = {};
-  let ok = true;
+ const checks: Record<string, 'ok' | 'unavailable'> = {};
+ let ok = true;
 
-  const t0 = Date.now();
-  try {
-    await (await getDb()).query('SELECT 1');
-    checks.database = 'ok';
-  } catch (err) {
-    checks.database = 'unavailable';
-    ok = false;
-    logger.error({ err }, 'readiness: database probe failed');
-  }
-  void t0;
+ const t0 = Date.now();
+ try {
+ await (await getDb()).query('SELECT 1');
+ checks.database = 'ok';
+ } catch (err) {
+ checks.database = 'unavailable';
+ ok = false;
+ logger.error({ err }, 'readiness: database probe failed');
+ }
+ void t0;
 
-  res.status(ok ? 200 : 503).json({ status: ok ? 'ready' : 'not_ready', checks });
+ res.status(ok ? 200 : 503).json({ status: ok ? 'ready' : 'not_ready', checks });
 }));
 
 /**
  * Metrics. Gated three ways: it must be enabled, the caller must be
  * authenticated, and the caller must hold `security.read`. An open
- * `/metrics` endpoint is a reconnaissance gift — it exposes request rates,
+ * `/metrics` endpoint is a reconnaissance gift -- it exposes request rates,
  * error classes and bucket names.
  *
  * The path is normalised to a leading slash: `METRICS_PATH` is configurable and
@@ -59,13 +59,13 @@ healthRouter.get('/ready', asyncRoute(async (_req, res) => {
 const METRICS_ROUTE = `/${env.observability.metricsPath.replace(/^\/+/, '')}`;
 
 healthRouter.get(METRICS_ROUTE,
-  authenticate, requirePermission('security.read'),
-  asyncRoute(async (_req, res) => {
-    if (!env.observability.metricsEnabled) {
-      res.status(404).json({ code: 'NOT_FOUND', message: 'Not found.' });
-      return;
-    }
-    res.type('text/plain; version=0.0.4').send(await metricsText());
-  }));
+ authenticate, requirePermission('security.read'),
+ asyncRoute(async (_req, res) => {
+ if (!env.observability.metricsEnabled) {
+ res.status(404).json({ code: 'NOT_FOUND', message: 'Not found.' });
+ return;
+ }
+ res.type('text/plain; version=0.0.4').send(await metricsText());
+ }));
 
 export const __testing = { startedAt, METRICS_ROUTE };

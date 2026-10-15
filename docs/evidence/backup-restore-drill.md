@@ -1,4 +1,4 @@
-# Backup / restore drill — measured
+# Backup / restore drill -- measured
 
 Run on this repository against `bigcrm-db` (PostgreSQL 17.11).
 Every figure below is measured by `infra/scripts/backup-restore-drill.sh`.
@@ -27,7 +27,7 @@ attempting to violate it in the *restored* database:
 | Indexes | count compared source vs restored | identical |
 | Migration state | `schema_migrations` non-empty | present |
 
-## RTO / RPO — what this does and does not establish
+## RTO / RPO -- what this does and does not establish
 
 **RTO is bounded by the restore time above, plus image and cutover.** A full
 `pg_restore` of 4170 rows took 899 ms. Adding container pull,
@@ -37,7 +37,7 @@ That is an inference from a measured number plus untimed steps, not a measuremen
 of the whole procedure.
 
 **RPO is NOT established by this drill.** Logical dumps give an RPO equal to the
-dump interval — 24 hours at best with a nightly schedule. The RPO target of 5
+dump interval -- 24 hours at best with a nightly schedule. The RPO target of 5
 minutes requires RDS PITR, which replays write-ahead log and has no local
 analogue. Until a PITR restore is performed against a real RDS instance, RPO
 remains a **target, not a measurement**.
@@ -45,10 +45,10 @@ remains a **target, not a measurement**.
 ## Caveats
 
 - The drill restores a **logical** dump. RDS automated backups are physical
-  (base backups + WAL), which is faster and supports PITR. This drill proves the
-  *procedure* and the *integrity checks*, not the mechanism production will use.
+ (base backups + WAL), which is faster and supports PITR. This drill proves the
+ *procedure* and the *integrity checks*, not the mechanism production will use.
 - The database used here is small. Restore time scales with size and index count;
-  re-run the drill against a production-shaped dataset before treating 899 ms
-  as representative.
+ re-run the drill against a production-shaped dataset before treating 899 ms
+ as representative.
 - No backup **retention**, encryption-at-rest-in-backup, or cross-region copy
-  was verified. None of those can be verified from this host.
+ was verified. None of those can be verified from this host.

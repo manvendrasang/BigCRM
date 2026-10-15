@@ -17,25 +17,25 @@ PostgreSQL 15+ (developed and tested against **17.5**).
 
 ## 2. Tables (39)
 
-**Identity & tenancy** — `organizations`, `users`, `organization_members`,
+**Identity & tenancy** -- `organizations`, `users`, `organization_members`,
 `teams`, `team_members`
 
-**CRM core** — `companies`, `contacts`, `leads`, `pipelines`, `pipeline_stages`,
+**CRM core** -- `companies`, `contacts`, `leads`, `pipelines`, `pipeline_stages`,
 `deals`
 
-**Activity** — `activities`, `tasks`, `notes`, `comments`, `attachments`
+**Activity** -- `activities`, `tasks`, `notes`, `comments`, `attachments`
 
-**Tags & custom data** — `tags`, `contact_tags`, `company_tags`, `lead_tags`,
+**Tags & custom data** -- `tags`, `contact_tags`, `company_tags`, `lead_tags`,
 `deal_tags`, `custom_fields`, `custom_field_values`
 
-**Notifications** — `notifications`
+**Notifications** -- `notifications`
 
-**Audit & telemetry** — `audit_logs`, `security_events`
+**Audit & telemetry** -- `audit_logs`, `security_events`
 
-**Sessions & credentials** — `sessions`, `password_resets`,
+**Sessions & credentials** -- `sessions`, `password_resets`,
 `email_verifications`, `invitations`, `mfa_recovery_codes`, `api_tokens`
 
-**Workspace** — `saved_views`, `import_jobs`, `export_jobs`,
+**Workspace** -- `saved_views`, `import_jobs`, `export_jobs`,
 `webhook_endpoints`, `webhook_deliveries`, `idempotency_keys`
 
 Plus `schema_migrations` created by the runner.
@@ -52,8 +52,8 @@ Application checks are convenience. These are the actual guarantees:
 | `uq_tags` `UNIQUE (organization_id, name_normalized)` | Tag creation race is resolved by the index, not a SELECT (RULE 146) |
 | `deals_stage_matches_pipeline` composite FK | **A deal's stage must belong to its pipeline** |
 | `tasks_completed_consistent` CHECK | `(status='completed') = (completed_at IS NOT NULL)` |
-| `uq_sessions_refresh_jti` | One live refresh token per session — makes reuse a *detectable race* |
-| `CHECK` on all enum columns | `status`, `lifecycle_stage`, `role`, `priority`, `severity`, … |
+| `uq_sessions_refresh_jti` | One live refresh token per session -- makes reuse a *detectable race* |
+| `CHECK` on all enum columns | `status`, `lifecycle_stage`, `role`, `priority`, `severity`, ... |
 | `CHECK (value_c >= 0)`, `CHECK (score BETWEEN 0 AND 100)` | No negative money, bounded scores |
 | `CHECK (color ~ '^#[0-9a-fA-F]{6}$')` | Colour values are safe to render |
 | `CHECK (key ~ '^[a-z][a-z0-9_]{0,40}$')` | Custom-field keys are safe in URLs and HTML |
@@ -66,10 +66,10 @@ Application checks are convenience. These are the actual guarantees:
 PostgreSQL rejects a foreign key that references a table not yet created:
 
 ```
-42P01  relation "o" does not exist
+42P01 relation "o" does not exist
 ```
 
-This is **exactly the legacy defect** — the CRM shipped a migration where
+This is **exactly the legacy defect** -- the CRM shipped a migration where
 `contacts` referenced `companies` before `companies` existed, which SQLite
 accepted silently. It was reproduced during this build to confirm the audit
 finding.
@@ -78,7 +78,7 @@ Tables are therefore created in dependency order, and `uq_stages_pipeline_id` is
 declared *before* `deals` because the composite FK requires it:
 
 ```
-42830  there is no unique constraint matching given keys for referenced table
+42830 there is no unique constraint matching given keys for referenced table
 ```
 
 Migrations run against real PostgreSQL on every test run, so neither class can
@@ -91,7 +91,7 @@ one index.
 
 | Pattern | Index |
 |---|---|
-| Keyset list pages | `(organization_id, updated_at DESC, id DESC)` — supports `(sort, id)` cursors |
+| Keyset list pages | `(organization_id, updated_at DESC, id DESC)` -- supports `(sort, id)` cursors |
 | Membership lookups | `organization_members (organization_id)`, `(user_id)` |
 | Session liveness | `sessions (last_seen_at) WHERE revoked_at IS NULL` |
 | Refresh reuse detection | `uq_sessions_refresh_jti` (unique) |
@@ -99,7 +99,7 @@ one index.
 | Overdue scans | `tasks (organization_id, due_date) WHERE due_date IS NOT NULL` |
 | Timeline | `activities (organization_id, entity_type, entity_id, occurred_at DESC)` |
 | Unread badges | `notifications (user_id) WHERE read_at IS NULL` |
-| Audit browsing | `audit_logs (organization_id, created_at DESC, id DESC)`, `(actor_id, …)` |
+| Audit browsing | `audit_logs (organization_id, created_at DESC, id DESC)`, `(actor_id, ...)` |
 | Security alerting | `security_events (severity, created_at DESC)` |
 | Queue draining | `webhook_deliveries (next_attempt_at) WHERE status='pending'` |
 | Idempotency expiry | `idempotency_keys (expires_at)` |
@@ -113,7 +113,7 @@ paths, which is where the legacy CRM's unconditional indexes would have hurt.
 `deleted_at IS NULL`. Deletion is audited. Restoration is supported for contacts
 and companies.
 
-Rows are **not** permanently deleted while retention requires them — see
+Rows are **not** permanently deleted while retention requires them -- see
 `DISASTER_RECOVERY.md` §Retention.
 
 ## 7. Transactions
@@ -128,7 +128,7 @@ UPDATE invitations SET accepted_at = $1
  RETURNING id
 ```
 
-Zero rows returned ⇒ someone else already accepted it.
+Zero rows returned => someone else already accepted it.
 
 ## 8. Row Level Security (documented, not enabled)
 
@@ -138,7 +138,7 @@ depth:
 ```sql
 ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON contacts
-  USING (organization_id = current_setting('app.organization_id')::uuid);
+ USING (organization_id = current_setting('app.organization_id')::uuid);
 ```
 
 **Not enabled.** It depends on a per-connection setting surviving a pool, which is
@@ -150,7 +150,7 @@ exactly the class of bug that produced `LEG-01`. Correctness today rests on
 | Setting | Value | Why |
 |---|---|---|
 | Pool size | `DB_POOL_MAX`, default 10 | Bounded; the legacy system opened a connection per query |
-| `statement_timeout` | `DB_STATEMENT_TIMEOUT_MS`, default 15 s | RULE 77 — no infinite requests |
+| `statement_timeout` | `DB_STATEMENT_TIMEOUT_MS`, default 15 s | RULE 77 -- no infinite requests |
 | `connectionTimeoutMillis` | 10 s | Fail fast |
 | `idleTimeoutMillis` | 30 s | Release idle connections |
 | `ssl` | required when `NODE_ENV=production` | RULE 52 |
@@ -178,6 +178,6 @@ encryption. Tracked as `BIG-10`/`BIG-11`.
 ## 11. Backup and recovery
 
 Managed by the platform, not the application: RDS automated backups, PITR, and
-cross-region replicas. **No backup in this project has been restored** — a backup
+cross-region replicas. **No backup in this project has been restored** -- a backup
 that was never restored is not a backup. `DISASTER_RECOVERY.md` defines the
 procedure and states the drill as outstanding.

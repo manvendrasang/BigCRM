@@ -23,10 +23,10 @@ const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  * Placed after authentication but before the router so it covers every route.
  */
 export function readOnlyGuard(req: express.Request, _res: express.Response, next: express.NextFunction): void {
-  if (!env.security.readOnlyMode) return next();
-  if (READ_METHODS.has(req.method)) return next();
+ if (!env.security.readOnlyMode) return next();
+ if (READ_METHODS.has(req.method)) return next();
 
-  // The request body may contain credentials or PII; do not log it.
-  // The request ID is always safe.
-  throw serviceUnavailable('Service is in read-only mode; this operation is not available.');
+ // The request body may contain credentials or PII; do not log it.
+ // The request ID is always safe.
+ throw serviceUnavailable('Service is in read-only mode; this operation is not available.');
 }

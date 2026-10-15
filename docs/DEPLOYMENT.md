@@ -14,11 +14,11 @@ and no AWS credentials, so none of it could be built or verified.
 
 ```bash
 npm install
-npm test                        # 549 assertions, real PostgreSQL via PGlite
+npm test # 549 assertions, real PostgreSQL via PGlite
 cp server/.env.example server/.env
 # set the secrets marked REQUIRED
 npm run migrate
-npm run dev                     # http://localhost:3000
+npm run dev # http://localhost:3000
 ```
 
 `PGLITE_DATA_DIR=memory` needs no database installation. `DATABASE_URL` selects
@@ -28,15 +28,15 @@ node-postgres instead.
 
 ```
 Internet
-  → CloudFront (TLS, caching static assets only)
-  → WAF (managed rules, rate-based, bot control)
-  → ALB (TLS 1.2+, HSTS, target private:port)
-  → ECS Fargate services in PRIVATE subnets, no public IP
-      ├─ api    (≥2 tasks across ≥2 AZs)
-      └─ worker (imports, exports, webhooks, retention)
-  → RDS PostgreSQL (private, Multi-AZ, KMS, PITR)
-  → S3 (Block Public Access, SSE-KMS, versioning)
-  → Secrets Manager · KMS · CloudTrail · CloudWatch
+ -> CloudFront (TLS, caching static assets only)
+ -> WAF (managed rules, rate-based, bot control)
+ -> ALB (TLS 1.2+, HSTS, target private:port)
+ -> ECS Fargate services in PRIVATE subnets, no public IP
+ ├─ api (≥2 tasks across ≥2 AZs)
+ └─ worker (imports, exports, webhooks, retention)
+ -> RDS PostgreSQL (private, Multi-AZ, KMS, PITR)
+ -> S3 (Block Public Access, SSE-KMS, versioning)
+ -> Secrets Manager - KMS - CloudTrail - CloudWatch
 ```
 
 Database, cache and queues have **no public IP and no internet egress path**.
@@ -59,7 +59,7 @@ Set through Secrets Manager, never files.
 | Variable | Requirement |
 |---|---|
 | `NODE_ENV` | `production` |
-| `DATABASE_URL` | `postgresql://` — **required**; placeholders rejected |
+| `DATABASE_URL` | `postgresql://` -- **required**; placeholders rejected |
 | `APP_ORIGINS` | **required, non-empty**; https only |
 | `JWT_ISSUER`, `JWT_AUDIENCE` | required |
 | `JWT_ACCESS_SECRET` | ≥32 chars, distinct |
@@ -77,8 +77,8 @@ Startup aborts on any missing, placeholder, short, or duplicated secret.
 - RDS PostgreSQL 16+ in **private** subnets, no public IP
 - Storage encrypted with a customer KMS key
 - Automated backups + **point-in-time recovery**
-- `DELETE FROM audit_logs` is impossible by design — the append-only trigger
-  fires regardless of credentials
+- `DELETE FROM audit_logs` is impossible by design -- the append-only trigger
+ fires regardless of credentials
 - `sslmode=require`; app role has no superuser rights
 - Run migrations as a **separate** role before the new code serves traffic
 - Backward-compatible migrations: expand, migrate, contract
@@ -93,11 +93,11 @@ migration aborts the boot rather than diverging silently.
 - SSE-KMS with a customer key
 - Versioning on; lifecycle to abort incomplete multipart uploads
 - Least-privilege IAM: `s3:GetObject`/`PutObject`/`DeleteObject` on the required
-  prefix only. **Never `s3:*`.** Separate read/write/delete roles
+ prefix only. **Never `s3:*`.** Separate read/write/delete roles
 - Bucket policy denies non-TLS requests and unencrypted uploads
-- Keys: `organizations/{orgId}/documents/{uuid}{ext}` — opaque, never a filename
+- Keys: `organizations/{orgId}/documents/{uuid}{ext}` -- opaque, never a filename
 - Presigned URLs ≤5 minutes, permission-specific, generated **only after**
-  an authorization check
+ an authorization check
 - CloudTrail data events for read access
 
 ## Production checklist (RULE 218)
@@ -122,7 +122,7 @@ migration aborts the boot rather than diverging silently.
 ### Platform
 - [ ] WAF attached with managed rules
 - [ ] Private subnets; no public IPs on app or database
-- [ ] Security groups least-privilege; no DB→internet
+- [ ] Security groups least-privilege; no DB->internet
 - [ ] Egress restricted to required destinations
 - [ ] Private endpoints for S3, KMS, Secrets Manager
 - [ ] RDS encrypted, PITR on, backups verified
@@ -144,14 +144,14 @@ migration aborts the boot rather than diverging silently.
 ## Deployment sequence
 
 ```
-build → scan image → terraform plan → apply → migrate (separate role)
-      → deploy staging → smoke test → DAST → approval → canary 10% → 100%
+build -> scan image -> terraform plan -> apply -> migrate (separate role)
+ -> deploy staging -> smoke test -> DAST -> approval -> canary 10% -> 100%
 ```
 
 - **Canary**, not all-at-once. Watch 5xx rate and p99 latency.
 - Rollback = previous task definition + previous image tag.
 - Database rollback is **forward-fix only** unless a migration is explicitly
-  marked `@destructive` and a tested down-migration exists.
+ marked `@destructive` and a tested down-migration exists.
 - Never deploy code requiring a new column before old code tolerates its absence.
 
 ## Observability
@@ -161,7 +161,7 @@ build → scan image → terraform plan → apply → migrate (separate role)
 | 5xx rate | >1% over 5 min |
 | p99 latency | >2 s |
 | `permission_denials_total` | sustained spike |
-| `tenant_denials_total` | **any** sustained rate — possible attack |
+| `tenant_denials_total` | **any** sustained rate -- possible attack |
 | `auth_failures_total{reason=unknown_account}` | enumeration sweep |
 | `security_events` severity `high`/`critical` | immediate page |
 | DB connections | >80% of pool |

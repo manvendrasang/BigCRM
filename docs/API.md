@@ -5,59 +5,59 @@ Base path `/api/v1`. The v1 route layer is mounted in full
 
 ## Conventions
 
-### Field casing — camelCase in responses, snake_case in the database
+### Field casing -- camelCase in responses, snake_case in the database
 Every read path maps its rows to camelCase at the service boundary
-(`rowToField`, `rowToView`, `rowToEndpoint`, `rowToAuditLog`, …). Clients read
+(`rowToField`, `rowToView`, `rowToEndpoint`, `rowToAuditLog`, ...). Clients read
 `entityType`, `createdAt`, `changedFields`.
 
 This is not automatic and not enforced by types alone. A service that returns its
 raw `TenantScope.query()` result leaks snake_case into the API and the page
-silently renders blank cells — see BIG-33, where the audit viewer did exactly
+silently renders blank cells -- see BIG-33, where the audit viewer did exactly
 that while typecheck and lint stayed green. **A new read endpoint needs a
 mapper, not just a SELECT.** The permissive `Record<string, unknown>` return
 type will not catch its absence.
 
 ### Success
 ```json
-{ "data": { … }, "requestId": "…" }
+{ "data": { ... }, "requestId": "..." }
 ```
 
-### Lists — cursor pagination
+### Lists -- cursor pagination
 ```json
 {
-  "data": [ … ],
-  "pageInfo": {
-    "hasNextPage": true,
-    "hasPreviousPage": false,
-    "startCursor": "eyJ0Ijoi…",
-    "endCursor": "eyJ0Ijoi…"
-  },
-  "totalCount": 421
+ "data": [ ... ],
+ "pageInfo": {
+ "hasNextPage": true,
+ "hasPreviousPage": false,
+ "startCursor": "eyJ0Ijoi...",
+ "endCursor": "eyJ0Ijoi..."
+ },
+ "totalCount": 421
 }
 ```
 `?first=` defaults to 25, **hard cap 100**, out-of-range values are **rejected**
 (not clamped). Cursors are HMAC-signed; a tampered cursor returns 400. The
-response reports the values actually applied — the legacy CRM echoed the raw
+response reports the values actually applied -- the legacy CRM echoed the raw
 query values, so its envelope lied about the window (`LEG-14`).
 
 ### Errors
 ```json
 {
-  "code": "VALIDATION_FAILED",
-  "message": "Request validation failed.",
-  "details": { "email": "Enter a valid email address." },
-  "requestId": "9f2c1ab4e0d3"
+ "code": "VALIDATION_FAILED",
+ "message": "Request validation failed.",
+ "details": { "email": "Enter a valid email address." },
+ "requestId": "9f2c1ab4e0d3"
 }
 ```
-No stack traces, SQL, paths, hostnames, or secrets — ever (RULE 120).
+No stack traces, SQL, paths, hostnames, or secrets -- ever (RULE 120).
 
 | Code | Status | Meaning |
 |---|---|---|
 | `BAD_REQUEST` | 400 | Malformed input |
 | `UNAUTHENTICATED` | 401 | No/invalid/expired/revoked session, or not a member |
-| `INVALID_CREDENTIALS` | 401 | Login failure — **identical for unknown account** |
+| `INVALID_CREDENTIALS` | 401 | Login failure -- **identical for unknown account** |
 | `FORBIDDEN` | 403 | Authenticated, insufficient permission |
-| `NOT_FOUND` | 404 | Absent **or in another tenant** — never disambiguated |
+| `NOT_FOUND` | 404 | Absent **or in another tenant** -- never disambiguated |
 | `CONFLICT` | 409 | Duplicate, or last-owner protection |
 | `PAYLOAD_TOO_LARGE` | 413 | Body/file limit |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Upload rejected |
@@ -74,25 +74,25 @@ custom header.
 
 ## Implemented surface
 
-Every row below is mounted and exercised — over a real socket where the claim is
+Every row below is mounted and exercised -- over a real socket where the claim is
 about HTTP behaviour, and at the service layer otherwise.
 
 ### Authentication
 
 | Method | Path | Permission | Notes |
 |---|---|---|---|
-| POST | `/api/v1/auth/register` | — | Atomic: user + org + membership |
-| POST | `/api/v1/auth/login` | — | Timing-equalised; per-account limit; returns `mfaRequired` when enrolled |
-| POST | `/api/v1/auth/refresh` | — | Rotating, reuse → family revoked |
+| POST | `/api/v1/auth/register` | -- | Atomic: user + org + membership |
+| POST | `/api/v1/auth/login` | -- | Timing-equalised; per-account limit; returns `mfaRequired` when enrolled |
+| POST | `/api/v1/auth/refresh` | -- | Rotating, reuse -> family revoked |
 | POST | `/api/v1/auth/logout` | session | Revokes the current session |
 | POST | `/api/v1/auth/logout-all` | session | Revokes every session |
 | GET | `/api/v1/auth/sessions` | session | Active sessions + device labels |
 | DELETE | `/api/v1/auth/sessions/{id}` | session | Scoped to the caller; 404 for another user's id |
 | POST | `/api/v1/auth/password` | session | **Revokes all sessions**, then clears the cookies |
-| POST | `/api/v1/auth/password/forgot` | — | Enumeration-safe; token echoed only outside production |
-| POST | `/api/v1/auth/password/reset` | — | Single-use token |
-| POST | `/api/v1/auth/verify-email` | — | Single-use token |
-| POST | `/api/v1/auth/verify-email/resend` | session | — |
+| POST | `/api/v1/auth/password/forgot` | -- | Enumeration-safe; token echoed only outside production |
+| POST | `/api/v1/auth/password/reset` | -- | Single-use token |
+| POST | `/api/v1/auth/verify-email` | -- | Single-use token |
+| POST | `/api/v1/auth/verify-email/resend` | session | -- |
 | GET | `/api/v1/auth/me` | session | User + org + role |
 
 Token delivery: the access token is returned in the body **and** set as an
@@ -108,31 +108,31 @@ cookie (`bigcrm_at_refresh`) and never appears in a body; a readable
 | POST | `/api/v1/auth/mfa/enroll` | session | Returns the secret + `otpauth://` URI **once**; `mfa_enabled` stays false |
 | POST | `/api/v1/auth/mfa/enroll/confirm` | session | Verifies the code, then returns recovery codes **once** |
 | POST | `/api/v1/auth/mfa/recovery-codes` | session | Requires the current factor; revokes the previous set |
-| POST | `/api/v1/auth/mfa/disable` | session | Requires a TOTP or recovery code — a session alone is not enough |
-| POST | `/api/v1/auth/mfa/challenge` | — | **Public.** Completes a login challenge and issues the session |
+| POST | `/api/v1/auth/mfa/disable` | session | Requires a TOTP or recovery code -- a session alone is not enough |
+| POST | `/api/v1/auth/mfa/challenge` | -- | **Public.** Completes a login challenge and issues the session |
 
 Enrollment is three-legged on purpose: until the user proves they can generate a
-code, the stored secret is encrypted but grants nothing — a database CHECK
+code, the stored secret is encrypted but grants nothing -- a database CHECK
 constraint refuses `mfa_enabled = true` without one.
 
 ### Organization and membership
 
 | Method | Path | Permission | Notes |
 |---|---|---|---|
-| GET/PATCH | `/api/v1/org` | `organization.read` / `.update` | Allowlisted fields; unknown field → 422 |
+| GET/PATCH | `/api/v1/org` | `organization.read` / `.update` | Allowlisted fields; unknown field -> 422 |
 | GET | `/api/v1/org/roles` | `organization.read` | Assignable roles + hierarchy |
 | GET | `/api/v1/org/members` | `users.read` | Tenant-scoped |
 | PATCH | `/api/v1/org/members/{id}/role` | `users.update` | Hierarchy enforced; self-change refused; sessions revoked |
 | DELETE | `/api/v1/org/members/{id}` | `users.remove` | Last-owner protected |
 | POST | `/api/v1/org/members/transfer-ownership` | owner only | Re-authentication required; atomic; revokes both users' sessions |
-| GET | `/api/v1/org/invitations` | `users.invite` | — |
+| GET | `/api/v1/org/invitations` | `users.invite` | -- |
 | POST | `/api/v1/org/invitations` | `users.invite` | Role bounded by inviter; **token never in the response** |
 | DELETE | `/api/v1/org/invitations/{id}` | `users.invite` | Revoke |
-| GET | `/api/v1/org/invitations/preview?token=` | — | Safe preview only |
-| POST | `/api/v1/org/invitations/accept` | — | Existing users must prove identity; a token alone never suffices |
-| GET/POST | `/api/v1/org/teams` | `teams.read` / `.manage` | — |
+| GET | `/api/v1/org/invitations/preview?token=` | -- | Safe preview only |
+| POST | `/api/v1/org/invitations/accept` | -- | Existing users must prove identity; a token alone never suffices |
+| GET/POST | `/api/v1/org/teams` | `teams.read` / `.manage` | -- |
 
-`owner` is ungrantable by invitation or role change — it can only be reached
+`owner` is ungrantable by invitation or role change -- it can only be reached
 through `transfer-ownership`.
 
 ### CRM records
@@ -147,7 +147,7 @@ record types, so an HTTP verb maps to exactly one `<resource>.<verb>` permission
 | POST | `/api/v1/{type}` | `{type}.create` | `pipelines` also accepts `stages[]` and creates them atomically |
 | GET | `/api/v1/{type}/{id}` | `{type}.read` | Soft-deleted rows are **not** retrievable by id |
 | PATCH | `/api/v1/{type}/{id}` | `{type}.update` | Only spec-permitted columns; a client cannot set `organization_id` |
-| DELETE | `/api/v1/{type}/{id}` | `{type}.delete` | Soft delete. `tags` are refused — a shared vocabulary entry is not an auditable record |
+| DELETE | `/api/v1/{type}/{id}` | `{type}.delete` | Soft delete. `tags` are refused -- a shared vocabulary entry is not an auditable record |
 | POST | `/api/v1/{type}/{id}/restore` | `{type}.restore` | A separate permission: "delete" must not imply "undo delete" |
 | GET | `/api/v1/pipelines/{id}/stages` | `pipeline_stages.read` | Ordered by position |
 | POST | `/api/v1/deals/{id}/stage` | `deals.advance` | Re-reads the stage; applies probability and won/lost; refuses a foreign pipeline |
@@ -181,7 +181,7 @@ must be told, or it believes it filtered by something it did not.
 | GET/POST/DELETE | `/api/v1/views` | `saved_views.read/manage` | Own + org-shared; shared is admin-only |
 | GET | `/api/v1/webhooks/events` | `webhooks.manage` | Allowed event names |
 | GET/POST | `/api/v1/webhooks` | `webhooks.manage` | Create returns the secret once |
-| POST | `/api/v1/webhooks/:id/enable` · `/disable` | `webhooks.manage` | Re-enable is manual |
+| POST | `/api/v1/webhooks/:id/enable` - `/disable` | `webhooks.manage` | Re-enable is manual |
 | DELETE | `/api/v1/webhooks/:id` | `webhooks.manage` | Soft delete |
 
 Cross-entity search is client-side (fans out to the five tenant-scoped list
@@ -191,7 +191,7 @@ is served by `GET /api/v1/reports/overview`; there is deliberately no separate
 
 ### Not yet implemented
 
-Listed so the gap is explicit. Nothing in this table is mounted — a request to
+Listed so the gap is explicit. Nothing in this table is mounted -- a request to
 one of these paths returns `401` (unauthenticated) or `404` (authenticated),
 never a misleading success.
 
@@ -207,16 +207,16 @@ never a misleading success.
 | GET | `/health` | none | Liveness. `{status}` only |
 | GET | `/ready` | none | Dependency state as a bare word; fails closed with 503 |
 | GET | `/internal/metrics` | `security.read` | Path configurable; never public |
-| GET | `/api/v1/security/events` | `security.read` | — |
+| GET | `/api/v1/security/events` | `security.read` | -- |
 | GET | `/api/v1/security/rbac` | `security.read` | Effective matrix for the UI |
 
 ### Non-API endpoints
 | Path | Purpose |
 |---|---|
-| `/health` | Liveness — no internals |
-| `/ready` | Readiness — DB reachable; **protected diagnostics** |
+| `/health` | Liveness -- no internals |
+| `/ready` | Readiness -- DB reachable; **protected diagnostics** |
 | `/internal/metrics` | Prometheus; private network or authenticated |
-| `/docs` | OpenAPI — **disable or restrict in production** (RULE 119) |
+| `/docs` | OpenAPI -- **disable or restrict in production** (RULE 119) |
 
 ## Rate limits
 

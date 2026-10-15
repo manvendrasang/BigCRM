@@ -13,13 +13,13 @@ if (container === null) throw new Error('Root container #root is missing from in
 // StrictMode double-invokes effects in development, which is deliberate: it
 // surfaces missing cleanup in the session bootstrap and unmounted updates.
 createRoot(container).render(
-  <StrictMode>
-    <ThemeProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
-    </ThemeProvider>
-  </StrictMode>,
+ <StrictMode>
+ <ThemeProvider>
+ <BrowserRouter>
+ <AuthProvider>
+ <App />
+ </AuthProvider>
+ </BrowserRouter>
+ </ThemeProvider>
+ </StrictMode>,
 );

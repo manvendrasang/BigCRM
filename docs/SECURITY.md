@@ -15,7 +15,7 @@ Verified by execution: **549 assertions, 0 failures** (`npm test`).
 | No enumeration | decoy-hash verification; identical code **and** message | auth |
 | Minimum strength | length, 4 character classes, denylist, no email/name/domain | auth |
 | Lockout | per-account, `MAX_FAILED_LOGINS` then `LOCKOUT_SEC` | auth |
-| Rate limiting | global, auth-IP, auth-account, search, export, upload, sensitive | — |
+| Rate limiting | global, auth-IP, auth-account, search, export, upload, sensitive | -- |
 | Tokens | 15-min access; rotating single-use refresh with reuse detection | auth, `S9` |
 | Session expiry | idle **and** absolute, both checked every request | `S9` |
 | Revocation | per-session, revoke-all, on role change, on removal, on password change/reset | `S9`, `S10` |
@@ -30,23 +30,23 @@ Verified by execution: **549 assertions, 0 failures** (`npm test`).
 | Owner ≠ admin | distinct permissions, asserted invariant | rbac |
 | Last owner | `wouldOrphanOwners()` on demote and remove | rbac |
 | Invitation authority | inviter may only offer a role they could assign | `S11` |
-| Defence in depth | denial → 403 logged + counted; resource absent → 404 | — |
+| Defence in depth | denial -> 403 logged + counted; resource absent -> 404 | -- |
 
 ### Multi-tenancy
 | Control | Implementation | Test |
 |---|---|---|
-| Compile-time | `TenantScope` requires an organizationId | — |
+| Compile-time | `TenantScope` requires an organizationId | -- |
 | Runtime | `assertTenantPredicate()` throws on an unscoped tenant query | `S1` |
 | Schema | `organization_id NOT NULL` + index on every tenant table | `S2` |
-| Cross-tenant reads | 404, never 403 — existence is not leaked | `S2` |
-| Cross-tenant writes | membership re-checked on every authenticated request | — |
+| Cross-tenant reads | 404, never 403 -- existence is not leaked | `S2` |
+| Cross-tenant writes | membership re-checked on every authenticated request | -- |
 
 ### Input handling
 | Control | Implementation | Test |
 |---|---|---|
 | XSS | allowlist sanitiser; `escapeHtml`; no raw-HTML render path | `S4` |
-| SQL injection | all values bound; identifiers allowlisted via `allowlist()` | — |
-| Mass assignment | explicit per-entity field allowlists | — |
+| SQL injection | all values bound; identifiers allowlisted via `allowlist()` | -- |
+| Mass assignment | explicit per-entity field allowlists | -- |
 | Upload | magic-byte detection; SVG/HTML/executables never accepted | `S6` |
 | Path traversal | filenames validated; keys are opaque UUIDs | `S6` |
 | CSV injection | `= + - @ TAB CR` prefixed with `'` on export | `S13` |
@@ -69,7 +69,7 @@ the single accepted relaxation, documented in `SECURITY_FINDINGS.md` A3.
 ### Data protection
 | Control | Implementation |
 |---|---|
-| Encryption at rest | delegated to the platform (KMS) — **not configured here** |
+| Encryption at rest | delegated to the platform (KMS) -- **not configured here** |
 | Field-level encryption | pepper on all passwords; TOTP pending (BIG-11) |
 | PII minimisation | `auditDiff()` allowlist; secrets/PII cannot enter audit rows |
 | Log hygiene | recursive redaction, email masking, IP masking |
@@ -90,7 +90,7 @@ encryption), `BIG-12` (retention scheduler), `BIG-19` (metrics route),
 
 ## 3. Accepted risks
 
-`SECURITY_FINDINGS.md` §Accepted risks — A1 audit-write failure, A2 scrypt cost,
+`SECURITY_FINDINGS.md` §Accepted risks -- A1 audit-write failure, A2 scrypt cost,
 A3 `style-src 'unsafe-inline'`.
 
 ## 4. Outstanding platform controls

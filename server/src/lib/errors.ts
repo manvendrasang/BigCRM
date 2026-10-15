@@ -1,17 +1,17 @@
 /** Safe public error type (RULE 120/121). Never carries internal detail to the client. */
 export class AppError extends Error {
-  readonly status: number;
-  readonly code: string;
-  readonly details?: Record<string, unknown>;
-  readonly expose: boolean;
-  constructor(status: number, code: string, message: string, details?: Record<string, unknown>) {
-    super(message);
-    this.name = 'AppError';
-    this.status = status;
-    this.code = code;
-    this.details = details;
-    this.expose = status < 500;
-  }
+ readonly status: number;
+ readonly code: string;
+ readonly details?: Record<string, unknown>;
+ readonly expose: boolean;
+ constructor(status: number, code: string, message: string, details?: Record<string, unknown>) {
+ super(message);
+ this.name = 'AppError';
+ this.status = status;
+ this.code = code;
+ this.details = details;
+ this.expose = status < 500;
+ }
 }
 export const badRequest = (m: string, d?: Record<string, unknown>) => new AppError(400, 'BAD_REQUEST', m, d);
 export const validationFailed = (d: Record<string, unknown>) => new AppError(422, 'VALIDATION_FAILED', 'Request validation failed.', d);
@@ -29,6 +29,6 @@ export const internal = (m = 'Internal error.') => new AppError(500, 'INTERNAL_E
 export const serviceUnavailable = (m = 'Service temporarily unavailable.') => new AppError(503, 'SERVICE_UNAVAILABLE', m);
 /** Signals an operational abort inside a transaction: must roll back, never commit. */
 export class TransactionAbort extends Error {
-  override readonly cause: AppError;
-  constructor(cause: AppError) { super(cause.code); this.name = 'TransactionAbort'; this.cause = cause; }
+ override readonly cause: AppError;
+ constructor(cause: AppError) { super(cause.code); this.name = 'TransactionAbort'; this.cause = cause; }
 }

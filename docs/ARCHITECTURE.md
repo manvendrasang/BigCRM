@@ -3,24 +3,24 @@
 ## 1. Design principles
 
 1. **Security is a layer, not a pass at the end.** It shaped the schema (tenant
-   column on every table), the API (permission per route), the data layer
-   (`TenantScope`), the session model (revocable), and the deployment plan.
+ column on every table), the API (permission per route), the data layer
+ (`TenantScope`), the session model (revocable), and the deployment plan.
 2. **The server is the only authority.** No client-supplied value decides
-   authorization, tenancy, ownership, or role.
+ authorization, tenancy, ownership, or role.
 3. **Fail closed.** Missing configuration aborts startup. Malformed security
-   data denies. Unknown roles deny.
+ data denies. Unknown roles deny.
 4. **Enumerate less.** Where a value can be public, public it; where it cannot,
-   the client gets nothing.
+ the client gets nothing.
 5. **Audit is a control, not a log.** Append-only at the database level.
 
 ## 2. Layering
 
 ```
 routes (HTTP, not yet written)
-  └─ services        business rules · transactions · audit · notifications
-       └─ repositories/base.ts    TenantScope + identifier allowlists
-            └─ db/driver.ts       pg Pool (prod) | PGlite (dev/test)
-                 └─ PostgreSQL 17  39 tables · 89 FKs · 128 indexes
+ └─ services business rules - transactions - audit - notifications
+ └─ repositories/base.ts TenantScope + identifier allowlists
+ └─ db/driver.ts pg Pool (prod) | PGlite (dev/test)
+ └─ PostgreSQL 17 39 tables - 89 FKs - 128 indexes
 ```
 
 Dependencies point downward only. Services never import Express; repositories
@@ -36,16 +36,16 @@ security requirement, and were deferred to keep the tested surface small.
 ## 3. Request lifecycle
 
 ```
-1. requestContext     assign/propagate X-Request-Id; capture and mask client IP
-2. securityHeaders    CSP + nonce, HSTS, nosniff, COOP/CORP, referrer, permissions
-3. corsPolicy         explicit allowlist; empty list denies, never allows
-4. globalLimiter      per-network budget
-5. body parsers       bounded size; malformed JSON becomes 400, not 500
-6. csrfGuard          Origin/Referer must be an allowed origin
-7. authenticate       Bearer token → verify → session row → live checks
-8. requirePermission  RBAC; every denial is logged and counted
-9. handler            service → repository → database
-10. errorHandler      safe public error; internals to the log only
+1. requestContext assign/propagate X-Request-Id; capture and mask client IP
+2. securityHeaders CSP + nonce, HSTS, nosniff, COOP/CORP, referrer, permissions
+3. corsPolicy explicit allowlist; empty list denies, never allows
+4. globalLimiter per-network budget
+5. body parsers bounded size; malformed JSON becomes 400, not 500
+6. csrfGuard Origin/Referer must be an allowed origin
+7. authenticate Bearer token -> verify -> session row -> live checks
+8. requirePermission RBAC; every denial is logged and counted
+9. handler service -> repository -> database
+10. errorHandler safe public error; internals to the log only
 ```
 
 ### Authentication (step 7) performs five checks
@@ -76,13 +76,13 @@ old. Presenting an already-used token is treated as theft: the entire token
 `refresh_jti` makes concurrent rotation a detectable race rather than a silent
 split-brain.
 
-Per RULE 123, **no token is stored in `localStorage`** — the legacy task manager
+Per RULE 123, **no token is stored in `localStorage`** -- the legacy task manager
 put a 7-day JWT there, which is exactly the exposure XSS needs.
 
 ### Password storage
 
 Default `scrypt` (Node built-in, zero native dependencies); `Argon2id`
-selectable and validated with a **self-test on first use** — the native binding
+selectable and validated with a **self-test on first use** -- the native binding
 on this host imports fine but `verify()` always fails, so it is refused rather
 than trusted.
 
@@ -107,9 +107,9 @@ same code and message.
 
 Three independent gates, all server-side:
 
-1. **Permission** — `requirePermission('contacts.update')`
-2. **Role hierarchy** — `ROLE_RANK`; nobody may act on a peer or superior
-3. **Resource ownership** — every query carries `organization_id`
+1. **Permission** -- `requirePermission('contacts.update')`
+2. **Role hierarchy** -- `ROLE_RANK`; nobody may act on a peer or superior
+3. **Resource ownership** -- every query carries `organization_id`
 
 `assertOwnerOnlyInvariant()` runs in tests: owner must be a strict superset of
 admin, and owner-exclusive permissions must not appear in any other role. That
@@ -119,24 +119,24 @@ assertion caught a real drift during the build (BIG-06).
 
 | Permission | owner | admin |
 |---|:-:|:-:|
-| `organization.delete` | ✓ | — |
-| `members.transfer_ownership` | ✓ | — |
-| `security.manage` | ✓ | — |
-| `retention.manage` | ✓ | — |
-| everything admin has | ✓ | ✓ |
+| `organization.delete` | PASS | -- |
+| `members.transfer_ownership` | PASS | -- |
+| `security.manage` | PASS | -- |
+| `retention.manage` | PASS | -- |
+| everything admin has | PASS | PASS |
 
 `owner` cannot be granted by invitation by anyone. It exists only on registration
-or via explicit ownership transfer — stricter than both legacy systems.
+or via explicit ownership transfer -- stricter than both legacy systems.
 
 ## 6. Multi-tenancy
 
 Enforced at three levels:
 
-1. **Compile-time** — `TenantScope` cannot be constructed without an
-   organizationId.
-2. **Runtime** — `assertTenantPredicate()` throws if a statement touches a tenant
-   table without `organization_id`.
-3. **Schema** — `organization_id uuid NOT NULL` on every tenant table, indexed.
+1. **Compile-time** -- `TenantScope` cannot be constructed without an
+ organizationId.
+2. **Runtime** -- `assertTenantPredicate()` throws if a statement touches a tenant
+ table without `organization_id`.
+3. **Schema** -- `organization_id uuid NOT NULL` on every tenant table, indexed.
 
 Reaching the raw driver requires naming the property `unsafe`, so a bypass is
 visible at every call site. This design was corrected during the build after
@@ -167,7 +167,7 @@ Every multi-statement business operation runs inside `transaction()`:
 - password reset: hash update + token burn + session revocation
 - member removal: membership delete + unassign across five tables
 - invitation acceptance: token claim + membership insert (single-use enforced by
-  `UPDATE … WHERE accepted_at IS NULL RETURNING id`)
+ `UPDATE ... WHERE accepted_at IS NULL RETURNING id`)
 
 ## 8. Error handling
 
@@ -175,7 +175,7 @@ Every multi-statement business operation runs inside `transaction()`:
 |---|---|---|
 | Unknown/invalid token, expired, revoked, not a member | 401 | one generic message |
 | Wrong role, missing permission, ownership rejected | 403 | generic |
-| Resource absent **or** in another tenant | 404 | generic — never leaks existence |
+| Resource absent **or** in another tenant | 404 | generic -- never leaks existence |
 | Validation | 422 | field-level messages |
 | Constraint violation | 409 | field-level |
 
@@ -185,12 +185,12 @@ id. `errorHandler` translates PostgreSQL SQLSTATEs (`23505`, `23503`, `23514`,
 
 ## 9. Observability
 
-- **Logs** — structured JSON, recursive secret redaction, email masking, request
-  id on every entry
-- **Metrics** — requests, latency, auth failures, permission denials, **tenant
-  denials**, rate-limit hits, DB latency, job outcomes, queue depth
-- **Audit** — server-generated, append-only (database trigger), minimised diffs
-- **Security events** — separate table with severity, feeding SIEM export
+- **Logs** -- structured JSON, recursive secret redaction, email masking, request
+ id on every entry
+- **Metrics** -- requests, latency, auth failures, permission denials, **tenant
+ denials**, rate-limit hits, DB latency, job outcomes, queue depth
+- **Audit** -- server-generated, append-only (database trigger), minimised diffs
+- **Security events** -- separate table with severity, feeding SIEM export
 
 ## 10. Key trade-offs
 

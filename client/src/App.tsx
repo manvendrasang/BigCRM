@@ -26,52 +26,52 @@ import { DealBoard } from './pages/DealBoard';
  * deep-linkable and the browser back button behaves as users expect.
  */
 function shelled(element: JSX.Element): JSX.Element {
-  return (
-    <ProtectedRoute>
-      <AuthenticatedShell>{element}</AuthenticatedShell>
-    </ProtectedRoute>
-  );
+ return (
+ <ProtectedRoute>
+ <AuthenticatedShell>{element}</AuthenticatedShell>
+ </ProtectedRoute>
+ );
 }
 
 type RecordPath = 'contacts' | 'companies' | 'leads' | 'deals' | 'tasks';
 
 function recordRoutes(path: string, type: RecordPath): JSX.Element {
-  // Deals open the dedicated project window; every other type shares the
-  // generic detail page. The URL stays `/deals/:id` so existing links keep
-  // working — only what renders behind it changes.
-  const detail = type === 'deals' ? <ProjectDetail /> : <RecordDetail type={type} />;
-  return (
-    <>
-      <Route path={path} element={shelled(<RecordList type={type} />)} />
-      <Route path={`${path}/new`} element={shelled(<RecordCreate type={type} />)} />
-      <Route path={`${path}/:id`} element={shelled(detail)} />
-    </>
-  );
+ // Deals open the dedicated project window; every other type shares the
+ // generic detail page. The URL stays `/deals/:id` so existing links keep
+ // working -- only what renders behind it changes.
+ const detail = type === 'deals' ? <ProjectDetail /> : <RecordDetail type={type} />;
+ return (
+ <>
+ <Route path={path} element={shelled(<RecordList type={type} />)} />
+ <Route path={`${path}/new`} element={shelled(<RecordCreate type={type} />)} />
+ <Route path={`${path}/:id`} element={shelled(detail)} />
+ </>
+ );
 }
 
 export function App(): JSX.Element {
-  return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/dashboard" element={shelled(<Dashboard />)} />
-      <Route path="/search" element={shelled(<GlobalSearch />)} />
-      <Route path="/reports" element={shelled(<Reports />)} />
-      <Route path="/notifications" element={shelled(<Notifications />)} />
-      <Route path="/audit" element={shelled(<AuditLogs />)} />
-      <Route path="/views" element={shelled(<SavedViews />)} />
-      <Route path="/calendar" element={shelled(<Calendar />)} />
-      <Route path="/deals/board" element={shelled(<DealBoard />)} />
-      <Route path="/settings" element={shelled(<Settings />)} />
-      {recordRoutes('/contacts', 'contacts')}
-      {recordRoutes('/companies', 'companies')}
-      {recordRoutes('/leads', 'leads')}
-      {recordRoutes('/deals', 'deals')}
-      {recordRoutes('/tasks', 'tasks')}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
-  );
+ return (
+ <Routes>
+ <Route path="/" element={<Navigate to="/dashboard" replace />} />
+ <Route path="/login" element={<Login />} />
+ <Route path="/register" element={<Register />} />
+ <Route path="/dashboard" element={shelled(<Dashboard />)} />
+ <Route path="/search" element={shelled(<GlobalSearch />)} />
+ <Route path="/reports" element={shelled(<Reports />)} />
+ <Route path="/notifications" element={shelled(<Notifications />)} />
+ <Route path="/audit" element={shelled(<AuditLogs />)} />
+ <Route path="/views" element={shelled(<SavedViews />)} />
+ <Route path="/calendar" element={shelled(<Calendar />)} />
+ <Route path="/deals/board" element={shelled(<DealBoard />)} />
+ <Route path="/settings" element={shelled(<Settings />)} />
+ {recordRoutes('/contacts', 'contacts')}
+ {recordRoutes('/companies', 'companies')}
+ {recordRoutes('/leads', 'leads')}
+ {recordRoutes('/deals', 'deals')}
+ {recordRoutes('/tasks', 'tasks')}
+ <Route path="*" element={<Navigate to="/dashboard" replace />} />
+ </Routes>
+ );
 }
 
 export default App;

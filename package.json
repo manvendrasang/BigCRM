@@ -1,35 +1,35 @@
 {
-  "name": "bigcrm",
-  "version": "1.0.0",
-  "private": true,
-  "description": "BigCRM — production-grade multi-tenant CRM SaaS platform",
-  "license": "UNLICENSED",
-  "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
-  "workspaces": [
-    "server",
-    "client"
-  ],
-  "scripts": {
-    "build": "npm run build -w server && npm run build -w client",
-    "dev": "npm run dev -w server",
-    "dev:web": "npm run dev -w client",
-    "test": "node --experimental-strip-types --no-warnings --env-file=server/.env.test server/src/tests/run.ts",
-    "test:security": "node --experimental-strip-types --no-warnings --env-file=server/.env.test server/src/tests/security/scenarios.test.ts",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
-    "lint": "eslint .",
-    "migrate": "npm run migrate -w @bigcrm/server",
-    "seed": "npm run seed -w @bigcrm/server",
-    "migrate:status": "npm run migrate:status -w @bigcrm/server",
-    "bootstrap": "node scripts/bootstrap.mjs"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.5",
-    "eslint": "^9.39.5",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "globals": "^15.15.0",
-    "typescript-eslint": "^8.71.1"
-  }
+ "name": "bigcrm",
+ "version": "1.0.0",
+ "private": true,
+ "description": "BigCRM -- production-grade multi-tenant CRM SaaS platform",
+ "license": "UNLICENSED",
+ "type": "module",
+ "engines": {
+ "node": ">=22"
+ },
+ "workspaces": [
+ "server",
+ "client"
+ ],
+ "scripts": {
+ "build": "npm run build -w server && npm run build -w client",
+ "dev": "npm run dev -w server",
+ "dev:web": "npm run dev -w client",
+ "test": "node --experimental-strip-types --no-warnings --env-file=server/.env.test server/src/tests/run.ts",
+ "test:security": "node --experimental-strip-types --no-warnings --env-file=server/.env.test server/src/tests/security/scenarios.test.ts",
+ "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
+ "lint": "eslint .",
+ "migrate": "npm run migrate -w @bigcrm/server",
+ "seed": "npm run seed -w @bigcrm/server",
+ "migrate:status": "npm run migrate:status -w @bigcrm/server",
+ "bootstrap": "node scripts/bootstrap.mjs"
+ },
+ "devDependencies": {
+ "@eslint/js": "^9.39.5",
+ "eslint": "^9.39.5",
+ "eslint-plugin-react-hooks": "^5.2.0",
+ "globals": "^15.15.0",
+ "typescript-eslint": "^8.71.1"
+ }
 }

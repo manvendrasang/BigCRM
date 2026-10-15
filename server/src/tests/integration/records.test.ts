@@ -11,38 +11,38 @@ import { getDb } from '../../db/driver.ts';
 import { newId } from '../../lib/ids.ts';
 import { TenantScope } from '../../repositories/base.ts';
 import {
-  createRecord, getRecord, listRecords, updateRecord, softDeleteRecord, restoreRecord,
-  convertLead, moveDealStage, createPipelineWithStages, ensureDefaultPipeline, listPipelineStages,
-  type ActorRef,
+ createRecord, getRecord, listRecords, updateRecord, softDeleteRecord, restoreRecord,
+ convertLead, moveDealStage, createPipelineWithStages, ensureDefaultPipeline, listPipelineStages,
+ type ActorRef,
 } from '../../services/records.ts';
 import { registerUser } from '../../services/auth.ts';
 
 const brief = (v: unknown): string => String(v).slice(0, 60);
 const trim = (e: unknown): string => {
-  const msg = e instanceof Error ? e.message : String(e);
-  return msg.split('\n')[0]!.slice(0, 120);
+ const msg = e instanceof Error ? e.message : String(e);
+ return msg.split('\n')[0]!.slice(0, 120);
 };
 let pass = 0;
 const fails: string[] = [];
 const T = (l: string, c: boolean, x?: unknown): void => {
-  if (c) { pass++; console.log(`  [PASS] ${l}`); } else { fails.push(l); console.log(`  [FAIL] ${l} -> ${trim(x)}`); }
+ if (c) { pass++; console.log(` [PASS] ${l}`); } else { fails.push(l); console.log(` [FAIL] ${l} -> ${trim(x)}`); }
 };
 type Attempt<T> = { ok: true; v: T } | { ok: false; e: any };
 const attempt = async <T>(fn: () => Promise<T>): Promise<Attempt<T>> => {
-  try { return { ok: true, v: await fn() }; } catch (e) { return { ok: false, e }; }
+ try { return { ok: true, v: await fn() }; } catch (e) { return { ok: false, e }; }
 };
 
 const C = { ip: '10.0.0.9', userAgent: 'records-test/1.0', requestId: 'req-records' };
 
 const mkOrg = async (name: string, email: string) => {
-  const r = await registerUser({
-    name, email, password: 'Records-Test-Pass!42',
-    organizationName: `${name} Ltd`, client: C,
-  });
-  const actor: ActorRef = {
-    userId: r.user.id, organizationId: r.organizationId, role: 'owner', email: r.user.email,
-  };
-  return actor;
+ const r = await registerUser({
+ name, email, password: 'Records-Test-Pass!42',
+ organizationName: `${name} Ltd`, client: C,
+ });
+ const actor: ActorRef = {
+ userId: r.user.id, organizationId: r.organizationId, role: 'owner', email: r.user.email,
+ };
+ return actor;
 };
 
 const acme = await mkOrg('Acme', 'rec-acme@corp.io');
@@ -51,8 +51,8 @@ const viewerAcme: ActorRef = { ...acme, role: 'viewer' };
 
 console.log('\n=== companies ===');
 const acmeCo = await createRecord(acme, 'companies', {
-  name: '  Acme Widgets  ', domain: 'HTTPS://Acme-Widgets.COM', industry: 'Manufacturing',
-  employee_count: 250, annual_revenue_c: 18_000_000_00,
+ name: ' Acme Widgets ', domain: 'HTTPS://Acme-Widgets.COM', industry: 'Manufacturing',
+ employee_count: 250, annual_revenue_c: 18_000_000_00,
 });
 T('company created', Boolean(acmeCo.record.id));
 T('name is trimmed', acmeCo.record.name === 'Acme Widgets');
@@ -61,16 +61,16 @@ T('domain is normalised to a bare host', acmeCo.record.domain === 'acme-widgets.
 T('the company belongs to the creating tenant', acmeCo.record.organization_id === acme.organizationId);
 T('created_by is stamped server-side', acmeCo.record.created_by === acme.userId);
 T('a client cannot set its own organization_id',
-  await (async () => {
-    const spoof = await attempt(() => createRecord(acme, 'companies', { name: 'Spoof', organization_id: globex.organizationId }));
-    return !spoof.ok || spoof.v.record.organization_id === acme.organizationId;
-  })(), 'organization_id accepted from the body');
+ await (async () => {
+ const spoof = await attempt(() => createRecord(acme, 'companies', { name: 'Spoof', organization_id: globex.organizationId }));
+ return !spoof.ok || spoof.v.record.organization_id === acme.organizationId;
+ })(), 'organization_id accepted from the body');
 
 console.log('\n=== contacts ===');
 const ava = await createRecord(acme, 'contacts', {
-  first_name: 'Ava', last_name: 'Reed', email: '  AVA.REED@Customer.IO ',
-  phone: '+1 (555) 010-2030', job_title: 'VP Sales', company_id: String(acmeCo.record.id),
-  lifecycle_stage: 'prospect',
+ first_name: 'Ava', last_name: 'Reed', email: ' AVA.REED@Customer.IO ',
+ phone: '+1 (555) 010-2030', job_title: 'VP Sales', company_id: String(acmeCo.record.id),
+ lifecycle_stage: 'prospect',
 });
 T('contact created', Boolean(ava.record.id));
 T('email canonicalised', ava.record.email === 'ava.reed@customer.io', brief(ava.record.email));
@@ -79,48 +79,48 @@ T('linked company is kept', ava.record.company_id === String(acmeCo.record.id));
 
 console.log('\n=== notes: stored XSS (RULE 34) ===');
 {
-  // `body_html` is markup by contract and is rendered as markup by the client,
-  // so it must be sanitised on write. It previously reached the database with
-  // only a length cap, leaving `<script>` / `onerror` intact for every reader
-  // of the record — the stored-XSS primitive the legacy CRM shipped twice.
-  const evil = await createRecord(acme, 'notes', {
-    entity_type: 'contact', entity_id: String(ava.record.id),
-    body_html: '<p>hi</p><script>alert(1)</script><img src=x onerror="alert(2)"><a href="javascript:alert(3)">x</a>',
-    body_text: 'plain body',
-  });
-  const stored = String(evil.record.body_html ?? '');
-  T('notes body_html accepts safe markup', stored.includes('<p>hi</p>'), stored);
-  T('notes body_html strips <script>', !/<script/i.test(stored), stored);
-  T('notes body_html strips event handlers', !/\son\w+\s*=/i.test(stored), stored);
-  T('notes body_html strips javascript: URIs', !/javascript:/i.test(stored), stored);
+ // `body_html` is markup by contract and is rendered as markup by the client,
+ // so it must be sanitised on write. It previously reached the database with
+ // only a length cap, leaving `<script>` / `onerror` intact for every reader
+ // of the record -- the stored-XSS primitive the legacy CRM shipped twice.
+ const evil = await createRecord(acme, 'notes', {
+ entity_type: 'contact', entity_id: String(ava.record.id),
+ body_html: '<p>hi</p><script>alert(1)</script><img src=x onerror="alert(2)"><a href="javascript:alert(3)">x</a>',
+ body_text: 'plain body',
+ });
+ const stored = String(evil.record.body_html ?? '');
+ T('notes body_html accepts safe markup', stored.includes('<p>hi</p>'), stored);
+ T('notes body_html strips <script>', !/<script/i.test(stored), stored);
+ T('notes body_html strips event handlers', !/\son\w+\s*=/i.test(stored), stored);
+ T('notes body_html strips javascript: URIs', !/javascript:/i.test(stored), stored);
 
-  const upd = await updateRecord(acme, 'notes', String(evil.record.id), {
-    entity_type: 'contact', entity_id: String(ava.record.id),
-    body_html: '<b>bold</b><svg onload=alert(4)>',
-  });
-  const updated = String(upd.record.body_html ?? '');
-  T('update path sanitises too (not just create)', !/<svg/i.test(updated) && !/\son\w+\s*=/i.test(updated), updated);
-  T('update path preserves allowed markup', updated.includes('<b>bold</b>'), updated);
+ const upd = await updateRecord(acme, 'notes', String(evil.record.id), {
+ entity_type: 'contact', entity_id: String(ava.record.id),
+ body_html: '<b>bold</b><svg onload=alert(4)>',
+ });
+ const updated = String(upd.record.body_html ?? '');
+ T('update path sanitises too (not just create)', !/<svg/i.test(updated) && !/\son\w+\s*=/i.test(updated), updated);
+ T('update path preserves allowed markup', updated.includes('<b>bold</b>'), updated);
 
-  // Regression: `updateRecord` bound its parameter list off by one — the
-  // assignments started at `$2` while `$2` held the id — so a single-column
-  // update wrote the row's own UUID into that column instead of the new value.
-  // Every prior test updated a field it never read back, so this was invisible.
-  const single = await updateRecord(acme, 'notes', String(evil.record.id), {
-    entity_type: 'contact', entity_id: String(ava.record.id), body_text: 'rewritten body',
-  });
-  T('single-column update writes the new value, not the id',
-    single.record.body_text === 'rewritten body', single.record.body_text);
-  T('single-column update leaves body_html intact',
-    typeof single.record.body_html === 'string' && !/[<>]/.test(String(single.record.body_html)),
-    single.record.body_html);
+ // Regression: `updateRecord` bound its parameter list off by one -- the
+ // assignments started at `$2` while `$2` held the id -- so a single-column
+ // update wrote the row's own UUID into that column instead of the new value.
+ // Every prior test updated a field it never read back, so this was invisible.
+ const single = await updateRecord(acme, 'notes', String(evil.record.id), {
+ entity_type: 'contact', entity_id: String(ava.record.id), body_text: 'rewritten body',
+ });
+ T('single-column update writes the new value, not the id',
+ single.record.body_text === 'rewritten body', single.record.body_text);
+ T('single-column update leaves body_html intact',
+ typeof single.record.body_html === 'string' && !/[<>]/.test(String(single.record.body_html)),
+ single.record.body_html);
 }
 
 console.log('\n=== cross-tenant isolation (RULE 15) ===');
 const crossRead = await attempt(() => getRecord(globex, 'companies', String(acmeCo.record.id)));
 T('another tenant cannot read the row', !crossRead.ok && crossRead.e.code === 'NOT_FOUND', crossRead);
 T('a cross-tenant read returns 404, not 403 (no existence oracle)',
-  !crossRead.ok && crossRead.e.status === 404, crossRead);
+ !crossRead.ok && crossRead.e.status === 404, crossRead);
 
 const crossList = await listRecords(globex, 'companies');
 T('another tenant sees none of it in list', crossList.total === 0, crossList.total);
@@ -161,7 +161,7 @@ const found = await listRecords(acme, 'contacts', { q: 'reed' });
 T('free-text search finds the contact', found.data.some((r) => r.id === ava.record.id), found.total);
 const wildcard = await listRecords(acme, 'contacts', { q: '%' });
 T('a bare % is escaped and does not match everything',
-  wildcard.data.length === 0 || wildcard.data.every((r) => String(r.last_name).includes('%')), wildcard.data.length);
+ wildcard.data.length === 0 || wildcard.data.every((r) => String(r.last_name).includes('%')), wildcard.data.length);
 const globexSearch = await listRecords(globex, 'contacts', { q: 'reed' });
 T('search never crosses the tenant boundary', globexSearch.total === 0, globexSearch.total);
 
@@ -181,9 +181,9 @@ T('another tenant sees none of these stages', globexStages.length === 0, globexS
 T('the stage ids are genuinely absent, not merely hidden', globexStages.every((s) => s.pipeline_id !== pipeline.id));
 
 const deal = await createRecord(acme, 'deals', {
-  name: 'Acme renewal', value_c: 2_500_00, currency: 'USD',
-  pipeline_id: String(pipeline.id), stage_id: String(stages[0]!.id),
-  contact_id: String(ava.record.id), company_id: String(acmeCo.record.id),
+ name: 'Acme renewal', value_c: 2_500_00, currency: 'USD',
+ pipeline_id: String(pipeline.id), stage_id: String(stages[0]!.id),
+ contact_id: String(ava.record.id), company_id: String(acmeCo.record.id),
 });
 T('deal created', Boolean(deal.record.id));
 
@@ -200,13 +200,13 @@ T('moving to the won stage adopts the stage probability', Number(won.probability
 
 console.log('\n=== lead conversion (transactional) ===');
 const lead = await createRecord(acme, 'leads', {
-  first_name: 'Mia', last_name: 'Stone', email: 'mia@prospect.io',
-  company_name: 'Prospect Global', title: 'Head of Ops', source: 'webinar', score: 70, rating: 'hot',
+ first_name: 'Mia', last_name: 'Stone', email: 'mia@prospect.io',
+ company_name: 'Prospect Global', title: 'Head of Ops', source: 'webinar', score: 70, rating: 'hot',
 });
 T('lead created', Boolean(lead.record.id));
 
 const converted = await convertLead(acme, String(lead.record.id), {
-  createCompany: true, dealName: 'Prospect Global - platform', dealValueC: 1_200_00,
+ createCompany: true, dealName: 'Prospect Global - platform', dealValueC: 1_200_00,
 });
 T('conversion creates a contact', Boolean(converted.contact.id));
 T('conversion creates a company when asked', Boolean(converted.company?.id));
@@ -214,9 +214,9 @@ T('conversion creates a deal when asked', Boolean(converted.deal?.id));
 T('the lead is marked converted', converted.lead.status === 'converted');
 T('converted_at is stamped', Boolean(converted.lead.converted_at));
 T('the contact id is linked back to the lead',
-  converted.lead.converted_contact_id === String(converted.contact.id));
+ converted.lead.converted_contact_id === String(converted.contact.id));
 T('the deal id is linked back to the lead',
-  converted.lead.converted_deal_id === String(converted.deal?.id));
+ converted.lead.converted_deal_id === String(converted.deal?.id));
 T('the contact carries the company', converted.contact.company_id === String(converted.company?.id));
 
 const twice = await attempt(() => convertLead(acme, String(lead.record.id), {}));
@@ -231,32 +231,32 @@ T('conversion into a tenant with no pipeline fails cleanly', !doomed.ok, doomed)
 const rollLead = await getRecord(acme, 'leads', String(doomedLead.record.id));
 T('a failed conversion leaves the lead not-converted', rollLead.status !== 'converted', rollLead.status);
 T('a failed conversion creates no contact',
-  (await listRecords(acme, 'contacts')).total === beforeContactCount,
-  (await listRecords(acme, 'contacts')).total);
+ (await listRecords(acme, 'contacts')).total === beforeContactCount,
+ (await listRecords(acme, 'contacts')).total);
 
 const globexBefore = (await listRecords(globex, 'contacts')).total;
 const crossConvert = await attempt(() => convertLead(globex, String(lead.record.id), {}));
 T('another tenant cannot convert this lead', !crossConvert.ok, crossConvert);
 T('a refused cross-tenant conversion creates nothing',
-  (await listRecords(globex, 'contacts')).total === globexBefore);
+ (await listRecords(globex, 'contacts')).total === globexBefore);
 
 console.log('\n=== soft delete and restore ===');
 const doomed2 = await createRecord(acme, 'companies', { name: 'Deletable Co' });
 await softDeleteRecord(acme, 'companies', String(doomed2.record.id));
 T('a deleted record is hidden from reads',
-  (await attempt(() => getRecord(acme, 'companies', String(doomed2.record.id)))).ok === false);
+ (await attempt(() => getRecord(acme, 'companies', String(doomed2.record.id)))).ok === false);
 T('a deleted record is excluded from list',
-  (await listRecords(acme, 'companies')).data.every((r) => r.id !== doomed2.record.id));
+ (await listRecords(acme, 'companies')).data.every((r) => r.id !== doomed2.record.id));
 T('a deleted record is still counted when includeDeleted is set',
-  (await listRecords(acme, 'companies', { includeDeleted: true })).data.some((r) => r.id === doomed2.record.id));
+ (await listRecords(acme, 'companies', { includeDeleted: true })).data.some((r) => r.id === doomed2.record.id));
 await restoreRecord(acme, 'companies', String(doomed2.record.id));
 T('a deleted record can be restored', (await getRecord(acme, 'companies', String(doomed2.record.id))).name === 'Deletable Co');
 
 console.log('\n=== audit trail accompanies every mutation ===');
 const auditCount = async (org: string, action: string): Promise<number> => {
-  const r = await (await getDb()).query<{ n: number }>(
-    'SELECT count(*)::int AS n FROM audit_logs WHERE organization_id = $1 AND action = $2', [org, action]);
-  return r.rows[0]?.n ?? 0;
+ const r = await (await getDb()).query<{ n: number }>(
+ 'SELECT count(*)::int AS n FROM audit_logs WHERE organization_id = $1 AND action = $2', [org, action]);
+ return r.rows[0]?.n ?? 0;
 };
 T('company.create is audited', (await auditCount(acme.organizationId, 'companies.create')) > 0);
 T('contact.create is audited', (await auditCount(acme.organizationId, 'contacts.create')) > 0);
@@ -266,7 +266,7 @@ T('lead conversion is audited', (await auditCount(acme.organizationId, 'leads.co
 T('delete is audited', (await auditCount(acme.organizationId, 'companies.delete')) > 0);
 T('restore is audited', (await auditCount(acme.organizationId, 'companies.restore')) > 0);
 T('the other tenant has no audit rows for these actions',
-  (await auditCount(globex.organizationId, 'leads.convert')) === 0);
+ (await auditCount(globex.organizationId, 'leads.convert')) === 0);
 
 console.log('\n=== viewer role sees records but the matrix still gates writes ===');
 T('a viewer can list contacts', (await listRecords(viewerAcme, 'contacts')).total > 0);
@@ -281,39 +281,39 @@ console.log('\n=== regression: a rejected optional write must not roll back the 
 // downgraded to a ROLLBACK. The caller still holds the RETURNING row and
 // reports success. `TenantScope.bestEffort` contains it with a SAVEPOINT.
 {
-  const scope = new TenantScope(acme.organizationId);
-  const poisonedId = newId();
-  let committedId: string | null = null;
+ const scope = new TenantScope(acme.organizationId);
+ const poisonedId = newId();
+ let committedId: string | null = null;
 
-  const outcome = await scope.transaction(async (tx) => {
-    await tx.unsafe.query(
-      `INSERT INTO companies (id, organization_id, name, name_normalized, created_at, updated_at, created_by, updated_by)
-       VALUES ($1,$2,'Poison Test Co','poison test co',now(),now(),$3,$3)`,
-      [poisonedId, acme.organizationId, acme.userId]);
-    // Deliberately violates activities_entity_type_check.
-    await tx.bestEffort('test.bad_activity', async (s) => {
-      await s.unsafe.query(
-        `INSERT INTO activities (id, organization_id, type, actor_id, entity_type, entity_id, metadata, occurred_at, created_at)
-         VALUES ($1,$2,'created',$3,'not_a_real_type',$4,'{}'::jsonb,now(),now())`,
-        [newId(), acme.organizationId, acme.userId, poisonedId]);
-      return true;
-    });
-    // If the transaction had been poisoned, this statement fails with 25P02.
-    const stillAlive = await tx.unsafe.query('SELECT count(*)::int AS n FROM companies WHERE id = $1', [poisonedId]);
-    committedId = stillAlive.rows[0]?.n === 1 ? poisonedId : null;
-    return true;
-  });
+ const outcome = await scope.transaction(async (tx) => {
+ await tx.unsafe.query(
+ `INSERT INTO companies (id, organization_id, name, name_normalized, created_at, updated_at, created_by, updated_by)
+ VALUES ($1,$2,'Poison Test Co','poison test co',now(),now(),$3,$3)`,
+ [poisonedId, acme.organizationId, acme.userId]);
+ // Deliberately violates activities_entity_type_check.
+ await tx.bestEffort('test.bad_activity', async (s) => {
+ await s.unsafe.query(
+ `INSERT INTO activities (id, organization_id, type, actor_id, entity_type, entity_id, metadata, occurred_at, created_at)
+ VALUES ($1,$2,'created',$3,'not_a_real_type',$4,'{}'::jsonb,now(),now())`,
+ [newId(), acme.organizationId, acme.userId, poisonedId]);
+ return true;
+ });
+ // If the transaction had been poisoned, this statement fails with 25P02.
+ const stillAlive = await tx.unsafe.query('SELECT count(*)::int AS n FROM companies WHERE id = $1', [poisonedId]);
+ committedId = stillAlive.rows[0]?.n === 1 ? poisonedId : null;
+ return true;
+ });
 
-  T('the transaction completes rather than throwing', outcome === true);
-  T('statements after the rejected write still run', committedId === poisonedId, committedId);
-  const persisted = await attempt(() => getRecord(acme, 'companies', poisonedId));
-  T('the business write actually committed', persisted.ok, persisted);
-  const activityCount = await (await getDb()).query<{ n: number }>(
-    'SELECT count(*)::int AS n FROM activities WHERE entity_type = $1', ['not_a_real_type']);
-  T('the rejected activity row was rolled back to its savepoint', activityCount.rows[0]?.n === 0, activityCount.rows[0]);
-  T('and the failure was reported, not hidden',
-    (await (await getDb()).query<{ n: number }>(
-      'SELECT count(*)::int AS n FROM companies WHERE name = $1', ['Poison Test Co'])).rows[0]?.n === 1);
+ T('the transaction completes rather than throwing', outcome === true);
+ T('statements after the rejected write still run', committedId === poisonedId, committedId);
+ const persisted = await attempt(() => getRecord(acme, 'companies', poisonedId));
+ T('the business write actually committed', persisted.ok, persisted);
+ const activityCount = await (await getDb()).query<{ n: number }>(
+ 'SELECT count(*)::int AS n FROM activities WHERE entity_type = $1', ['not_a_real_type']);
+ T('the rejected activity row was rolled back to its savepoint', activityCount.rows[0]?.n === 0, activityCount.rows[0]);
+ T('and the failure was reported, not hidden',
+ (await (await getDb()).query<{ n: number }>(
+ 'SELECT count(*)::int AS n FROM companies WHERE name = $1', ['Poison Test Co'])).rows[0]?.n === 1);
 }
 
 console.log('\n=== helper: ensureDefaultPipeline is idempotent ===');
@@ -321,7 +321,7 @@ const first = await ensureDefaultPipeline(globex);
 const second = await ensureDefaultPipeline(globex);
 T('calling it twice returns the same pipeline', first.id === second.id);
 T('and it is a different tenant from acme first-tenant pipelines',
-  first.organization_id === globex.organizationId);
+ first.organization_id === globex.organizationId);
 
 console.log(`\n================ ${pass} passed, ${fails.length} failed ================`);
 if (fails.length) console.log('FAILURES:\n - ' + fails.join('\n - '));
