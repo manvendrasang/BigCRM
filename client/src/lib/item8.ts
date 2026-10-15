@@ -38,7 +38,7 @@ async function throwForStatus(res: Response): Promise<never> {
  throw new ApiError(res.status, code, message);
 }
 
-// ── custom fields ────────────────────────────────────────────────────────────
+//  custom fields 
 
 export interface CustomFieldDef {
  id: string;
@@ -75,7 +75,7 @@ export async function setFieldValue(fieldId: string, entityId: string, value: un
  await api.post(`/custom-fields/${encodeURIComponent(fieldId)}/values/${encodeURIComponent(entityId)}`, { value });
 }
 
-// ── attachments ──────────────────────────────────────────────────────────────
+//  attachments 
 
 export interface AttachmentRow {
  id: string;
@@ -125,7 +125,7 @@ export async function deleteAttachment(id: string): Promise<void> {
  await api.del(`/attachments/file/${encodeURIComponent(id)}`);
 }
 
-// ── transfers ────────────────────────────────────────────────────────────────
+//  transfers 
 
 export interface ExportJobRow {
  id: string;

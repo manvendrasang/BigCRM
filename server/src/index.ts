@@ -78,7 +78,7 @@ async function main(): Promise<void> {
  // Bound the header read window: a slowloris client must not hold a socket.
  server.requestTimeout = 30_000;
 
- // ── graceful shutdown ──────────────────────────────────────────────────────
+ //  graceful shutdown 
  let shuttingDown = false;
  const shutdown = (signal: string): void => {
  if (shuttingDown) return;

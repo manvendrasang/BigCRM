@@ -68,7 +68,7 @@ export default tseslint.config(
  // a rule that is wrong almost everywhere trains people to ignore it.
  '@typescript-eslint/no-base-to-string': 'off',
 
- // ── correctness ──
+ //  correctness 
  '@typescript-eslint/no-floating-promises': 'error',
  '@typescript-eslint/no-misused-promises': 'error',
  '@typescript-eslint/await-thenable': 'error',
@@ -77,7 +77,7 @@ export default tseslint.config(
  allowNumber: true, allowBoolean: true, allowNullish: true, allowRegExp: true,
  }],
 
- // ── banned outright ──
+ //  banned outright 
  // `any` erases exactly the type information the tenant guard depends on.
  '@typescript-eslint/no-explicit-any': 'error',
  '@typescript-eslint/no-unsafe-assignment': 'off', // boundary code parses JSON
@@ -86,7 +86,7 @@ export default tseslint.config(
  'no-implied-eval': 'error',
  'no-new-func': 'error',
 
- // ── noise reduction ──
+ //  noise reduction 
  '@typescript-eslint/no-unused-vars': ['error', {
  argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none',
  }],
@@ -105,7 +105,7 @@ export default tseslint.config(
  },
  },
 
- // ── server: Node, no DOM ──
+ //  server: Node, no DOM 
  {
  files: ['server/**/*.ts'],
  languageOptions: {
@@ -128,7 +128,7 @@ export default tseslint.config(
  },
  },
 
- // ── client: browser ──
+ //  client: browser 
  {
  files: ['client/**/*.{ts,tsx}'],
  plugins: { 'react-hooks': reactHooks },
@@ -141,7 +141,7 @@ export default tseslint.config(
  },
  },
 
- // ── tests ──
+ //  tests 
  //
  // Tests are held to the correctness rules but not the typing ones. A test that
  // asserts "this malformed input is rejected" has to hold the untyped value to
@@ -170,7 +170,7 @@ export default tseslint.config(
  ...tseslint.configs.disableTypeChecked,
  },
 
- // ── scripts and CLIs: stdout IS the interface ──
+ //  scripts and CLIs: stdout IS the interface 
  {
  files: ['scripts/**/*.mjs', '*.config.{ts,mjs,js}', 'server/src/db/cli.ts',
  'server/seed/**/*.ts', 'infra/scripts/**/*.mjs'],

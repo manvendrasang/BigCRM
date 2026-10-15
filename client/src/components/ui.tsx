@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
-// ── KPI cards ───────────────────────────────────────────────────────────────
+//  KPI cards 
 
 export function KpiCard({
  title,
@@ -53,7 +53,7 @@ export function KpiLinkCard({
  );
 }
 
-// ── sections ────────────────────────────────────────────────────────────────
+//  sections 
 
 /**
  * A titled card section with the standard rhythm. Replaces the ad-hoc
@@ -76,7 +76,7 @@ export function Section({
  );
 }
 
-// ── empty states ────────────────────────────────────────────────────────────
+//  empty states 
 
 export function EmptyState({
  message,
@@ -93,7 +93,7 @@ export function EmptyState({
  );
 }
 
-// ── badges ──────────────────────────────────────────────────────────────────
+//  badges 
 
 export function CountBadge({ count }: { count: number }): JSX.Element | null {
  if (count <= 0) return null;
@@ -105,7 +105,7 @@ export function CountBadge({ count }: { count: number }): JSX.Element | null {
  );
 }
 
-// ── confirm dialog ──────────────────────────────────────────────────────────
+//  confirm dialog 
 
 export interface ConfirmOptions {
  title: string;

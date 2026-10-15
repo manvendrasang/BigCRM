@@ -34,7 +34,7 @@ import {
 
 export type ActorRef = { userId: string; organizationId: string; role: Role; email: string };
 
-// ── organization ─────────────────────────────────────────────────────────────
+//  organization 
 export type OrgRow = {
  id: string; name: string; slug: string; currency: string; timezone: string; locale: string;
  status: string; retention_days: number; created_at: string;
@@ -79,7 +79,7 @@ export async function updateOrganization(
  return after;
 }
 
-// ── members ──────────────────────────────────────────────────────────────────
+//  members 
 export type MemberRow = {
  user_id: string; email: string; name: string; role: Role; status: string;
  joined_at: string | null; created_at: string; mfa_enabled: boolean; email_verified_at: string | null;
@@ -329,7 +329,7 @@ export async function removeMember(actor: ActorRef, targetUserId: string): Promi
  return { removed: true, sessionsRevoked: revoked };
 }
 
-// ── invitations (RULE 29) ────────────────────────────────────────────────────
+//  invitations (RULE 29) 
 export type InviteResult = { invitationId: string; expiresAt: string; email: string; role: Role };
 
 /**
@@ -555,7 +555,7 @@ export async function listInvitations(actor: ActorRef): Promise<InvitationRow[]>
  return r.rows;
 }
 
-// ── teams ────────────────────────────────────────────────────────────────────
+//  teams 
 export async function listTeams(actor: ActorRef): Promise<{
  id: string; name: string; description: string | null; memberCount: number;
 }[]> {
@@ -588,7 +588,7 @@ export async function createTeam(actor: ActorRef, name: string, description?: st
  return { id, name: clean };
 }
 
-// ── shared audit writer (RULE 80, 81) ────────────────────────────────────────
+//  shared audit writer (RULE 80, 81) 
 /**
  * Writes an audit row. `actorId`, `organizationId`, timestamps and IP are all
  * server-derived -- a client can never supply them (RULE 2, RULE 80).

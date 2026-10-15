@@ -60,7 +60,7 @@ const toPublic = (u: UserRow): PublicUser => ({
  emailVerified: Boolean(u.email_verified_at), mfaEnabled: u.mfa_enabled,
 });
 
-// ── registration ─────────────────────────────────────────────────────────────
+//  registration 
 export type RegisterInput = {
  name: string; email: string; password: string; organizationName: string; client: ClientInfo;
 };
@@ -135,7 +135,7 @@ export async function registerUser(input: RegisterInput): Promise<{ user: Public
  });
 }
 
-// ── login ────────────────────────────────────────────────────────────────────
+//  login 
 export type LoginInput = {
  email: string; password: string; client: ClientInfo;
  organizationId?: string | null;
@@ -260,7 +260,7 @@ async function resolveOrganization(db: DbClient, userId: string, requested: stri
  return all.rows[0] ?? null;
 }
 
-// ── sessions ─────────────────────────────────────────────────────────────────
+//  sessions 
 export type SessionTokens = {
  sessionId: string; accessToken: string; refreshToken: string; refreshJti: string; refreshHash: string;
 };
@@ -312,7 +312,7 @@ function deviceLabel(ua: string): string {
  return `${br} on ${os}`;
 }
 
-// ── session validation (runs on every authenticated request) ─────────────────
+//  session validation (runs on every authenticated request) 
 export type SessionCheck = { valid: true; actor: Actor } | { valid: false; reason: string; code: string };
 
 /** Row shape from the session JOIN. Typed so `noUncheckedIndexedAccess` cannot
@@ -381,7 +381,7 @@ export async function validateSession(accessToken: string): Promise<SessionCheck
  };
 }
 
-// ── refresh with reuse detection (RULE 24) ───────────────────────────────────
+//  refresh with reuse detection (RULE 24) 
 export type RefreshResult =
  | { ok: true; user: PublicUser; actor: Actor; accessToken: string; refreshToken: string; accessExpiresIn: number; refreshExpiresIn: number }
  | { ok: false; reason: string; code: string; compromised?: boolean };
@@ -505,7 +505,7 @@ export async function refreshSession(refreshToken: string, client: ClientInfo): 
  };
 }
 
-// ── revocation ───────────────────────────────────────────────────────────────
+//  revocation 
 export async function revokeSessions(db: DbClient, userId: string, sessionIds: string[], reason: string): Promise<number> {
  if (sessionIds.length === 0) return 0;
  // Scoped by BOTH user_id and id: a caller cannot revoke another account's
@@ -535,7 +535,7 @@ async function revokeFamily(db: DbClient, familyId: string, reason: string): Pro
  [nowIso(), reason, familyId]);
 }
 
-// ── password change / reset ──────────────────────────────────────────────────
+//  password change / reset 
 export async function changePassword(args: {
  userId: string; currentPassword: string; newPassword: string; client: ClientInfo;
 }): Promise<{ revoked: number }> {
@@ -631,7 +631,7 @@ export async function resetPassword(args: {
 const badRequestSafe = (): AppError =>
  new AppError(400, 'INVALID_RESET_TOKEN', 'That reset link is invalid or has expired.');
 
-// ── email verification ───────────────────────────────────────────────────────
+//  email verification 
 export async function verifyEmail(token: string, client: ClientInfo): Promise<{ userId: string }> {
  const db = await initDriver();
  const digest = hashToken(token);
@@ -664,7 +664,7 @@ export async function resendVerification(userId: string, client: ClientInfo): Pr
  return { token: t.token };
 }
 
-// ── sessions listing (settings/security page) ────────────────────────────────
+//  sessions listing (settings/security page) 
 export async function listSessions(userId: string, currentSessionId: string): Promise<{
  id: string; deviceLabel: string; ip: string; createdAt: string; lastSeenAt: string; current: boolean;
 }[]> {

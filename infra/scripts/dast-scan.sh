@@ -11,7 +11,7 @@
 # curl -> ZAP proxy (127.0.0.1:8090) -> https://localhost:8443 (nginx, TLS)
 # -> http://bigcrm-api:3000
 #
-# ── Why this drives requests instead of letting ZAP spider ───────────────────
+#  Why this drives requests instead of letting ZAP spider 
 #
 # ZAP's baseline spider discovers routes by following HTML links. This is a JSON
 # API: the root returns 404 with no links, so the spider stops after four URLs

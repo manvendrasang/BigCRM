@@ -148,7 +148,7 @@ export function RecordList({ type }: { type: RecordType }): JSX.Element {
  </p>
  ) : rows.length === 0 ? (
  <EmptyState
- message={q ? `No ${config.plural.toLowerCase()} match “${q}”.` : `No ${config.plural.toLowerCase()} yet.`}
+ message={q ? `No ${config.plural.toLowerCase()} match ${q}.` : `No ${config.plural.toLowerCase()} yet.`}
  />
  ) : (
  <>

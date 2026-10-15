@@ -29,7 +29,7 @@
 -- Fixing only (1) would hide the bug rather than remove it: the next optional
 -- write to fail for any other reason would silently discard a user's data again.
 
--- ── activities: allow pipeline records ────────────────────────────────────────
+--  activities: allow pipeline records 
 ALTER TABLE activities DROP CONSTRAINT IF EXISTS activities_entity_type_check;
 
 ALTER TABLE activities ADD CONSTRAINT activities_entity_type_check
@@ -39,7 +39,7 @@ ALTER TABLE activities ADD CONSTRAINT activities_entity_type_check
  'task', 'note', 'organization', 'user'
  ));
 
--- ── notes/comments reference pipelines? no. But custom_field_values and
+--  notes/comments reference pipelines? no. But custom_field_values and
 -- saved_views are addressed by entity_type too; widen those that enumerate
 -- the same vocabulary so a pipeline can carry notes and custom fields.
 
@@ -47,11 +47,11 @@ ALTER TABLE notes DROP CONSTRAINT IF EXISTS notes_entity_type_check;
 ALTER TABLE notes ADD CONSTRAINT notes_entity_type_check
  CHECK (entity_type IN ('contact', 'company', 'lead', 'deal'));
 
--- ── index supporting the activity timeline for the newly allowed types ────────
+--  index supporting the activity timeline for the newly allowed types 
 CREATE INDEX IF NOT EXISTS idx_activities_entity
  ON activities (organization_id, entity_type, entity_id, occurred_at DESC);
 
--- ── comment is addressed by entity_type as well; widen to match notes ────────
+--  comment is addressed by entity_type as well; widen to match notes 
 ALTER TABLE comments DROP CONSTRAINT IF EXISTS comments_entity_type_check;
 ALTER TABLE comments ADD CONSTRAINT comments_entity_type_check
  CHECK (entity_type IN ('contact', 'company', 'lead', 'deal', 'task'));

@@ -32,8 +32,8 @@ Internet
  -> WAF (managed rules, rate-based, bot control)
  -> ALB (TLS 1.2+, HSTS, target private:port)
  -> ECS Fargate services in PRIVATE subnets, no public IP
- ├─ api (≥2 tasks across ≥2 AZs)
- └─ worker (imports, exports, webhooks, retention)
+  api (2 tasks across 2 AZs)
+  worker (imports, exports, webhooks, retention)
  -> RDS PostgreSQL (private, Multi-AZ, KMS, PITR)
  -> S3 (Block Public Access, SSE-KMS, versioning)
  -> Secrets Manager - KMS - CloudTrail - CloudWatch
@@ -62,10 +62,10 @@ Set through Secrets Manager, never files.
 | `DATABASE_URL` | `postgresql://` -- **required**; placeholders rejected |
 | `APP_ORIGINS` | **required, non-empty**; https only |
 | `JWT_ISSUER`, `JWT_AUDIENCE` | required |
-| `JWT_ACCESS_SECRET` | ≥32 chars, distinct |
-| `JWT_REFRESH_SECRET` | ≥32 chars, distinct from access + pepper |
-| `SECRETS_PEPPER` | ≥32 chars, distinct |
-| `STORAGE_SIGNING_SECRET` | ≥32 chars, distinct |
+| `JWT_ACCESS_SECRET` | 32 chars, distinct |
+| `JWT_REFRESH_SECRET` | 32 chars, distinct from access + pepper |
+| `SECRETS_PEPPER` | 32 chars, distinct |
+| `STORAGE_SIGNING_SECRET` | 32 chars, distinct |
 | `EMAIL_PROVIDER` | **`console` is refused in production** |
 | `COOKIES_SECURE` | `true` |
 | `HSTS_ENABLED` | `true` |
@@ -96,7 +96,7 @@ migration aborts the boot rather than diverging silently.
  prefix only. **Never `s3:*`.** Separate read/write/delete roles
 - Bucket policy denies non-TLS requests and unencrypted uploads
 - Keys: `organizations/{orgId}/documents/{uuid}{ext}` -- opaque, never a filename
-- Presigned URLs ≤5 minutes, permission-specific, generated **only after**
+- Presigned URLs 5 minutes, permission-specific, generated **only after**
  an authorization check
 - CloudTrail data events for read access
 

@@ -207,7 +207,7 @@ export async function scheduleMeeting(
 
 export const __testing = { MAX_RANGE_DAYS, MAX_ROWS, MEETING_ENTITIES };
 
-// ── invitations ─────────────────────────────────────────────────────────────
+//  invitations 
 
 export interface MeetingInvite {
  id: string;

@@ -27,7 +27,7 @@ Verified by execution: **549 assertions, 0 failures** (`npm test`).
 | RBAC | 5 roles, 107/103/72/37/15 permissions | rbac |
 | Hierarchy | `ROLE_RANK`; no peer/superior modification | `S3`, rbac |
 | No self-escalation | self role change refused | `S3` |
-| Owner ≠ admin | distinct permissions, asserted invariant | rbac |
+| Owner  admin | distinct permissions, asserted invariant | rbac |
 | Last owner | `wouldOrphanOwners()` on demote and remove | rbac |
 | Invitation authority | inviter may only offer a role they could assign | `S11` |
 | Defence in depth | denial -> 403 logged + counted; resource absent -> 404 | -- |

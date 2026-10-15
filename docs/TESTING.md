@@ -64,16 +64,16 @@ SQLite-only DDL defect and my own composite-FK ordering bug.
 
 ```
 src/tests/
-├── run.ts runner (fresh process per suite)
-├── unit/config.test.ts 19 -- production config fail-closed, TLS posture, CA handling
-├── unit/modules.test.ts 54 -- every module loads; disabled sources inert; no secret literals
-├── unit/rbac.test.ts 26 -- permission matrix, hierarchy, invariants
-├── integration/auth.test.ts 26 -- register, login, lockout, sessions, token reuse
-├── integration/http.test.ts 100 -- headers/CORS/CSRF/cookies/errors over a real socket
-├── integration/http-mfa.test.ts 28 -- MFA enrollment and login challenge over HTTP
-├── integration/records.test.ts 76 -- records, tenant isolation, transactional conversion
-├── integration/retention.test.ts 17 -- batched purge; audit rows never deleted
-└── security/scenarios.test.ts 137 -- 14 RULE 222 scenarios + 21 controls
+ run.ts runner (fresh process per suite)
+ unit/config.test.ts 19 -- production config fail-closed, TLS posture, CA handling
+ unit/modules.test.ts 54 -- every module loads; disabled sources inert; no secret literals
+ unit/rbac.test.ts 26 -- permission matrix, hierarchy, invariants
+ integration/auth.test.ts 26 -- register, login, lockout, sessions, token reuse
+ integration/http.test.ts 100 -- headers/CORS/CSRF/cookies/errors over a real socket
+ integration/http-mfa.test.ts 28 -- MFA enrollment and login challenge over HTTP
+ integration/records.test.ts 76 -- records, tenant isolation, transactional conversion
+ integration/retention.test.ts 17 -- batched purge; audit rows never deleted
+ security/scenarios.test.ts 137 -- 14 RULE 222 scenarios + 21 controls
 ```
 
 ## Branch coverage -- wired 2026-10-14
@@ -104,7 +104,7 @@ Notes, stated plainly:
 ## Coverage map
 
 ### `unit/rbac.test.ts`
-Owner-only invariant - owner ≠ admin - admin cannot delete the org - role rank
+Owner-only invariant - owner  admin - admin cannot delete the org - role rank
 ordering - no self-promotion - no peer/superior modification - manager/admin
 invitation ceilings - last-owner protection on demote and remove - export is
 admin+ - viewer has no write permission anywhere.
@@ -157,7 +157,7 @@ Every discovered security defect becomes a permanent regression test
 (RULE 185). Naming convention used throughout:
 
 ```
-[FAIL] S<n> › <property>
+[FAIL] S<n>  <property>
 ```
 
 A test must assert the **property**, not a proxy. Two failures in this codebase

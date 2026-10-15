@@ -90,7 +90,7 @@ for (let o = 0; o < ORGS; o++) {
  [id, orgId, pipelineId, name, i, Math.round((i / (STAGES.length - 1)) * 100), i === STAGES.length - 1, now]);
  }
 
- // ── companies ──
+ //  companies 
  const companyIds: string[] = [];
  for (let i = 0; i < COMPANIES_PER_ORG; i++) {
  const id = newId();
@@ -104,7 +104,7 @@ for (let o = 0; o < ORGS; o++) {
  `corp${i}.example`, pick(INDUSTRY), ownerId, now]);
  }
 
- // ── contacts ──
+ //  contacts 
  for (let i = 0; i < CONTACTS_PER_ORG; i++) {
  await db.query(
  `INSERT INTO contacts (id,organization_id,first_name,last_name,email,email_normalized,phone,
@@ -118,7 +118,7 @@ for (let o = 0; o < ORGS; o++) {
  pick(['lead', 'prospect', 'customer', 'churned']), pick(['webinar', 'referral', 'outbound', 'organic']), now]);
  }
 
- // ── deals ──
+ //  deals 
  for (let i = 0; i < DEALS_PER_ORG; i++) {
  const stageIdx = rnd(STAGES.length);
  await db.query(
@@ -131,7 +131,7 @@ for (let o = 0; o < ORGS; o++) {
  pick(['webinar', 'referral', 'outbound']), now]);
  }
 
- // ── leads ──
+ //  leads 
  for (let i = 0; i < LEADS_PER_ORG; i++) {
  await db.query(
  `INSERT INTO leads (id,organization_id,first_name,last_name,company_name,email,email_normalized,
@@ -144,7 +144,7 @@ for (let o = 0; o < ORGS; o++) {
  pick(['hot', 'warm', 'cold']), ownerId, now]);
  }
 
- // ── tasks ──
+ //  tasks 
  for (let i = 0; i < TASKS_PER_ORG; i++) {
  const done = Math.random() < 0.4;
  await db.query(
@@ -158,7 +158,7 @@ for (let o = 0; o < ORGS; o++) {
  done ? now : null, now]);
  }
 
- // ── notes + activities ──
+ //  notes + activities 
  // The drill checks that a restored database is *functional*, and an empty
  // table cannot demonstrate that. Notes and activities also exercise the
  // activities_entity_type CHECK widened by migration 0002.
@@ -181,7 +181,7 @@ for (let o = 0; o < ORGS; o++) {
  }
  }
 
- // ── audit rows ──
+ //  audit rows 
  // Seeding via raw SQL bypasses the audit layer, so audit_logs would otherwise
  // be empty -- and an empty table cannot demonstrate that the append-only
  // trigger survived a restore. These rows exist precisely so the drill has

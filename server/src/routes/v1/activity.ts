@@ -1,7 +1,7 @@
 /**
  * Audit log reads + notifications (previously "not yet implemented" in API.md).
  *
- * ── Audit ────────────────────────────────────────────────────────────────────
+ *  Audit 
  *
  * `GET /api/v1/org/audit-logs` pages the org's audit trail newest-first under
  * `audit.read`. The trail is append-only at the SQL layer, so reads need no
@@ -10,7 +10,7 @@
  * text over `before_json`/`after_json` would be a full-table scan users could
  * trigger at will, so it does not exist.
  *
- * ── Notifications ────────────────────────────────────────────────────────────
+ *  Notifications 
  *
  * `GET /api/v1/notifications` lists the caller's own notifications
  * (org-scoped AND user-scoped: a user reads only their own rows).

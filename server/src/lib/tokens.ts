@@ -23,7 +23,7 @@ export const TOKEN_TTL = {
  shareLinkSec: 86_400,
 } as const;
 
-// ── MFA recovery codes (RULE 25) ─────────────────────────────────────────────
+//  MFA recovery codes (RULE 25) 
 /** Crockford-ish alphabet: no I/O/0/1 to survive transcription. */
 const RECOVERY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 

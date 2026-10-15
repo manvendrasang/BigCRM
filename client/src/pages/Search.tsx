@@ -140,7 +140,7 @@ export function GlobalSearch(): JSX.Element {
  )}
 
  {hasSearched && !isSearching && hits.length === 0 && !error && (
- <EmptyState message={`No records match “${q.trim()}”.`} />
+ <EmptyState message={`No records match ${q.trim()}.`} />
  )}
 
  {hits.length > 0 && (

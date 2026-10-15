@@ -50,7 +50,7 @@ const publicActor = (a: Actor): PublicUser & { role: string } => ({
  role: a.role,
 });
 
-// ── schemas ───────────────────────────────────────────────────────────────────
+//  schemas 
 
 const emailField = z.string().trim().min(3).max(320).email();
 const passwordField = z.string().min(1).max(1024);
@@ -94,7 +94,7 @@ const parse = <T extends z.ZodTypeAny>(schema: T, body: unknown): z.infer<T> => 
  return schema.parse(parsed.data) as z.infer<T>;
 };
 
-// ── routes ────────────────────────────────────────────────────────────────────
+//  routes 
 
 authRouter.post('/register', authIpLimiter, csrfGuard, asyncRoute(async (req, res) => {
  if (env.security.blockNewAccounts) {

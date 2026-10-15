@@ -143,7 +143,7 @@ record types, so an HTTP verb maps to exactly one `<resource>.<verb>` permission
 
 | Method | Path | Permission | Notes |
 |---|---|---|---|
-| GET | `/api/v1/{type}` | `{type}.read` | `?q=` (wildcard-escaped, allowlisted columns), `?sort=`, `?order=`, `?limit=` (≤200), `?offset=`, exact filters, `?includeDeleted=` |
+| GET | `/api/v1/{type}` | `{type}.read` | `?q=` (wildcard-escaped, allowlisted columns), `?sort=`, `?order=`, `?limit=` (200), `?offset=`, exact filters, `?includeDeleted=` |
 | POST | `/api/v1/{type}` | `{type}.create` | `pipelines` also accepts `stages[]` and creates them atomically |
 | GET | `/api/v1/{type}/{id}` | `{type}.read` | Soft-deleted rows are **not** retrievable by id |
 | PATCH | `/api/v1/{type}/{id}` | `{type}.update` | Only spec-permitted columns; a client cannot set `organization_id` |

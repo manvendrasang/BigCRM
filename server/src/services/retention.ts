@@ -7,7 +7,7 @@
  * minimisation problem (GDPR Art. 5(1)(e): storage limitation), and an audit
  * table nobody prunes is also an audit table nobody can afford to keep.
  *
- * ── What is deleted, and what is never deleted ───────────────────────────────
+ *  What is deleted, and what is never deleted 
  *
  * Deleted: expired sessions, consumed/expired one-time tokens, read or expired
  * notifications, finished export artefacts, unconsumed MFA challenges.
@@ -16,7 +16,7 @@
  * UPDATE and DELETE, so audit truncation is a privileged maintenance
  * operation, not something a scheduler does.
  *
- * ── Deliberate properties ────────────────────────────────────────────────────
+ *  Deliberate properties 
  *
  * - **Batched.** Each purge deletes at most `batchSize` rows per table per run.
  * An unbounded `DELETE` on a large table takes a lock that stalls the API,
@@ -92,7 +92,7 @@ async function purgeBatched(
  * One sweep. Safe to call at any time; a no-op when `RETENTION_PURGE_ENABLED`
  * is false, which is the default so a developer machine never deletes anything.
  *
- * ── Leader election ──────────────────────────────────────────────────────────
+ *  Leader election 
  *
  * The scheduler runs in every replica. Without coordination, N replicas sweep
  * simultaneously: N× the lock contention on tables the API is reading, N× the
@@ -110,7 +110,7 @@ async function purgeBatched(
  * replica on a timer callback while another sweeps. Losing the election is a
  * normal, expected outcome, not something to wait on.
  *
- * ── Why the whole sweep holds one connection ─────────────────────────────────
+ *  Why the whole sweep holds one connection 
  *
  * Advisory locks are held per *session*, not per statement. If the lock were
  * taken via `db.query()` on the pool, each subsequent statement would land on an

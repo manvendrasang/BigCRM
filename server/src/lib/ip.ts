@@ -1,7 +1,7 @@
 /**
  * IP address normalisation.
  *
- * ── Why this module exists ───────────────────────────────────────────────────
+ *  Why this module exists 
  *
  * `audit_logs.ip`, `sessions.ip`, `users.last_login_ip` and
  * `idempotency_keys.requested_ip` are all PostgreSQL `inet` columns. `inet`
@@ -18,7 +18,7 @@
  * tests set a literal `10.0.0.1` rather than going through the middleware. Only
  * a request over a real socket exposed it.
  *
- * ── The rule ─────────────────────────────────────────────────────────────────
+ *  The rule 
  *
  * - **Persist the real address.** It is an audit record; an audit trail that
  * stores `127.0.0.*` cannot answer "which address did this", which is the

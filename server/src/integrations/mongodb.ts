@@ -35,7 +35,7 @@
 /**
  * MongoDB Atlas document-store provider (RULE 162 `StorageProvider` sibling).
  *
- * ── Why this exists, and why it is NOT the primary store ────────────────────
+ *  Why this exists, and why it is NOT the primary store 
  *
  * BigCRM's system of record is PostgreSQL. That is a deliberate security
  * decision, not a default: the schema leans on guarantees MongoDB cannot
@@ -44,7 +44,7 @@
  * - 89 foreign keys -> MongoDB has no referential integrity; a dangling
  * company_id or stage_id becomes silently possible
  * - 53 CHECK constraints -> domain invariants (valid enum, non-negative money,
- * completed ⟺ completed_at) would move to app code
+ * completed  completed_at) would move to app code
  * - composite FK -> "a deal's stage must belong to its pipeline" is
  * expressible in PostgreSQL and *not* in MongoDB
  * - append-only trigger -> audit tamper-evidence is a database guarantee;
@@ -59,7 +59,7 @@
  * schemaless integration payloads and webhook delivery records, where documents
  * are heterogeneous by design and are never joined or constrained.
  *
- * ── Security properties ──────────────────────────────────────────────────────
+ *  Security properties 
  *
  * RULE 56 the URI is a secret. It is never logged, never echoed, never
  * included in an error message, and never returned by a health check.

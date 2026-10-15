@@ -14,7 +14,7 @@ import type { ThemePreference } from '../lib/theme';
 const OPTIONS: { value: ThemePreference; label: string; glyph: string }[] = [
  { value: 'light', label: 'Light', glyph: 'Sun' },
  { value: 'dark', label: 'Dark', glyph: 'Moon' },
- { value: 'system', label: 'System', glyph: '◐' },
+ { value: 'system', label: 'System', glyph: '' },
 ];
 
 export function ThemeSwitcher(): JSX.Element {

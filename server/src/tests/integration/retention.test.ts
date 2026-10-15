@@ -148,7 +148,7 @@ console.log('\n=== one failing table does not abort the sweep ===');
  *
  * The scheduler runs in every replica. Without coordination they all sweep at
  * once: N concurrent multi-thousand-row deletes on the same rows, N× the lock
- * contention on tables the API is reading, and N−1 of those sweeps deleting
+ * contention on tables the API is reading, and N1 of those sweeps deleting
  * nothing because a peer already took the rows.
  *
  * The decisive property under test is a negative one: **a replica that loses the

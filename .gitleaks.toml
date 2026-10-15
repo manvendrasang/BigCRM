@@ -11,10 +11,10 @@ commits = []
 
 [[allowlist.rules]]
 id = "generic-api-key"
-description = "Dummy SECRETS_PEPPER in the DAST scan script — a fixture value, not a real secret"
+description = "Dummy SECRETS_PEPPER in the DAST scan script -- a fixture value, not a real secret"
 paths = ['''infra/scripts/dast-scan.sh''']
 
 [[allowlist.rules]]
 id = "linkedin-client-id"
-description = "Field name 'linkedin_url' in the redaction allowlist — a column name, not a credential"
+description = "Field name 'linkedin_url' in the redaction allowlist -- a column name, not a credential"
 paths = ['''server/src/lib/redact.ts''']

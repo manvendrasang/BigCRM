@@ -71,7 +71,7 @@ export class ApiError extends Error {
  }
 }
 
-// ── redaction (rule 5) ─────────────────────────────────────────────────────────
+//  redaction (rule 5) 
 
 const REDACTED = '[REDACTED]';
 
@@ -132,7 +132,7 @@ function scrubSecrets(text: string): string {
  return out;
 }
 
-// ── token store (rule 1) ───────────────────────────────────────────────────────
+//  token store (rule 1) 
 
 /**
  * THE ONLY PLACE AN ACCESS TOKEN IS STORED. Module scope == tab scope.
@@ -154,7 +154,7 @@ export function clearTokens(): void {
  accessToken = null;
 }
 
-// ── test seams ─────────────────────────────────────────────────────────────────
+//  test seams 
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -208,7 +208,7 @@ export function resetApiClient(): void {
  resetUnauthenticatedHandler();
 }
 
-// ── CSRF (rule 3) ──────────────────────────────────────────────────────────────
+//  CSRF (rule 3) 
 
 /**
  * Reads the double-submit CSRF token from its non-`HttpOnly` cookie.
@@ -234,7 +234,7 @@ export function getCsrfToken(): string | null {
  return null;
 }
 
-// ── core request (rules 2-5) ───────────────────────────────────────────────────
+//  core request (rules 2-5) 
 
 export interface RequestOptions {
  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -451,7 +451,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
  }
 }
 
-// ── typed helpers ──────────────────────────────────────────────────────────────
+//  typed helpers 
 
 export const api = {
  get: <T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> =>

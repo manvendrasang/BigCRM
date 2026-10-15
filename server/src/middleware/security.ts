@@ -33,7 +33,7 @@ declare global {
  }
 }
 
-// ── request id + client IP (RULE 171) ────────────────────────────────────────
+//  request id + client IP (RULE 171) 
 export function requestContext(req: express.Request, res: express.Response, next: express.NextFunction): void {
  // Honour an upstream id only if it looks like one, so log injection cannot
  // smuggle newlines or fake correlation ids.
@@ -61,7 +61,7 @@ export function requestContext(req: express.Request, res: express.Response, next
  next();
 }
 
-// ── security headers (RULE 35, 36, 125, 126, 127) ────────────────────────────
+//  security headers (RULE 35, 36, 125, 126, 127) 
 export function securityHeaders(_req: express.Request, res: express.Response, next: express.NextFunction): void {
  // Generate a nonce per response. Nothing inline is permitted, so the nonce is
  // available for the rare case a hashed inline script is added later.
@@ -88,7 +88,7 @@ export function securityHeaders(_req: express.Request, res: express.Response, ne
  ...(env.nodeEnv === 'production' ? ['upgrade-insecure-requests'] : []),
  ].join('; ');
 
- // ── Headers we set ourselves MUST be set BEFORE helmet runs. ───────────────
+ //  Headers we set ourselves MUST be set BEFORE helmet runs. 
  //
  // `helmet(opts)(req, res, next)` calls `next()` synchronously inside its own
  // middleware chain, so the entire downstream stack -- including the route
@@ -135,7 +135,7 @@ export function securityHeaders(_req: express.Request, res: express.Response, ne
  // Nothing may touch `res` after this point -- see the note above.
 }
 
-// ── CORS (RULE 37) ───────────────────────────────────────────────────────────
+//  CORS (RULE 37) 
 export function corsPolicy(): ReturnType<typeof cors> {
  const allowlist = new Set(env.appOrigins);
  const opts: CorsOptions = {
@@ -162,7 +162,7 @@ export function corsPolicy(): ReturnType<typeof cors> {
  return cors(opts);
 }
 
-// ── rate limiting (RULE 67) ──────────────────────────────────────────────────
+//  rate limiting (RULE 67) 
 const limiter = (opts: {
  windowMs: number; max: number; bucket: string; message: string; key?: (req: express.Request) => string;
 }) => rateLimit({
@@ -219,7 +219,7 @@ export const sensitiveActionWindow = limiter({
  message: 'Too many sensitive actions. Please contact an administrator.',
 });
 
-// ── authentication (RULE 30, 121) ────────────────────────────────────────────
+//  authentication (RULE 30, 121) 
 export async function authenticate(req: express.Request, _res: express.Response, next: express.NextFunction): Promise<void> {
  try {
  const header = req.get('authorization');
@@ -275,7 +275,7 @@ export const requireRole = (role: Role) => (req: express.Request, _res: express.
  next();
 };
 
-// ── CSRF (RULE 38) ───────────────────────────────────────────────────────────
+//  CSRF (RULE 38) 
 const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
 /**
  * Defence in depth for cookie-authenticated state changes:
@@ -317,7 +317,7 @@ export function csrfGuard(req: express.Request, _res: express.Response, next: ex
  next();
 }
 
-// ── error handling (RULE 120) ────────────────────────────────────────────────
+//  error handling (RULE 120) 
 export function notFoundHandler(req: express.Request, _res: express.Response, next: express.NextFunction): void {
  next(new AppError(404, 'NOT_FOUND', `No route matches ${req.method} ${req.path}.`));
 }

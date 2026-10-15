@@ -5,33 +5,33 @@ Complements `SECURITY.md` (what is implemented) with **how** and **why**.
 ## 1. Trust boundaries
 
 ```
-┌─ B0 ─ Internet (untrusted) ────────────────────────────────────────────┐
-│ Browser, mobile clients, scanners, attackers │
-└───────────────────────────┬───────────────────────────────────────────┘
- │ TLS 1.2+, TLS terminated at ALB
-┌─ B1 ─ CDN + WAF ──────────▼───────────────────────────────────────────┐
-│ Managed rules: injection, XSS, bots, floods. NOT a substitute for │
-│ secure code -- documented as such (RULE 65). │
-└───────────────────────────┬───────────────────────────────────────────┘
- │ only ALB accepts traffic
-┌─ B2 ─ ALB (public subnets) ───────────────────────────────────────────┐
-│ TLS termination, HSTS, request limits, access logs │
-└───────────────────────────┬───────────────────────────────────────────┘
- │ mTLS / security group, no public IP on app
-┌─ B3 ─ Private app subnets ────────────────────────────────────────────┐
-│ Express API - worker - [enforced: authenticated + permission + │
-│ tenant + ownership + validation on EVERY endpoint] │
-└──────┬───────────────────────────────┬───────────────────────────────┘
- │ private DNS, 5432/443 │ private endpoint
-┌─ B4 ─ RDS (private) ──┐ ┌─ B5 ─ S3 (private, Block Public Access) ┐
-│ Encrypted at rest, │ │ SSE-KMS, versioning, lifecycle, │
-│ PITR, least-privilege│ │ presigned URLs ≤5 min, key per org │
-└──────────────────────┘ └────────────────────────────────────────┘
- │
-┌─ B6 ─ Outbound ───────────────────────────────────────────────────────┐
-│ Egress-restricted: email, KMS, S3, monitoring, package registries │
-│ SSRF guard on any user-supplied URL (lib/ssrf.ts) │
-└───────────────────────────────────────────────────────────────────────┘
+ B0  Internet (untrusted) 
+ Browser, mobile clients, scanners, attackers 
+
+  TLS 1.2+, TLS terminated at ALB
+ B1  CDN + WAF 
+ Managed rules: injection, XSS, bots, floods. NOT a substitute for 
+ secure code -- documented as such (RULE 65). 
+
+  only ALB accepts traffic
+ B2  ALB (public subnets) 
+ TLS termination, HSTS, request limits, access logs 
+
+  mTLS / security group, no public IP on app
+ B3  Private app subnets 
+ Express API - worker - [enforced: authenticated + permission + 
+ tenant + ownership + validation on EVERY endpoint] 
+
+  private DNS, 5432/443  private endpoint
+ B4  RDS (private)   B5  S3 (private, Block Public Access) 
+ Encrypted at rest,   SSE-KMS, versioning, lifecycle, 
+ PITR, least-privilege  presigned URLs 5 min, key per org 
+ 
+ 
+ B6  Outbound 
+ Egress-restricted: email, KMS, S3, monitoring, package registries 
+ SSRF guard on any user-supplied URL (lib/ssrf.ts) 
+
 ```
 
 ### Controls at each boundary
@@ -119,7 +119,7 @@ runbook is in `INCIDENT_RESPONSE.md` §5.
 
 - `.env` gitignored; `!.env.example` explicitly allowed so the example is committed
 - Production refuses placeholder-looking values
-- Production requires ≥32 chars and distinct values across variables
+- Production requires 32 chars and distinct values across variables
 - Nothing secret is logged: recursive redaction covers `password`, `token`,
  `secret`, `authorization`, `cookie`, `totpSecret`, `apiKey`, `signingSecret`,
  and more

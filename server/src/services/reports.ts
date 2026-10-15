@@ -7,7 +7,7 @@
  * another tenant's rows -- the same guarantee as the list endpoints, applied to
  * `GROUP BY` rather than `SELECT ... LIMIT`.
  *
- * ── Why a dedicated endpoint rather than client-side aggregation ─────────────
+ *  Why a dedicated endpoint rather than client-side aggregation 
  *
  * The list endpoints paginate (max 200 rows). A pipeline report computed from
  * the first page would silently omit every deal past it, and fetching all
@@ -15,7 +15,7 @@
  * in SQL is one indexed query per report. The client renders; it does not
  * count.
  *
- * ── Centralised metric definitions (RULE 152) ────────────────────────────────
+ *  Centralised metric definitions (RULE 152) 
  *
  * Each report names exactly what it counts, so two consumers cannot disagree:
  * "open deal value" means `status NOT IN ('won','lost')` summed in cents,

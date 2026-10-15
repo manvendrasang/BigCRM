@@ -2,7 +2,7 @@
  * CRM record services -- companies, contacts, leads, deals, pipelines, tasks,
  * notes, activities, tags.
  *
- * ── The invariants this file exists to hold ──────────────────────────────────
+ *  The invariants this file exists to hold 
  *
  * 1. **Every read is tenant-scoped and excludes soft-deleted rows.** There is no
  * code path that can reach another tenant's row: `TenantScope` rejects any
@@ -51,7 +51,7 @@ export type ActorRef = {
 
 export type RequestMeta = { ip?: string | null; userAgent?: string | null; requestId?: string | null };
 
-// ── record specifications ─────────────────────────────────────────────────────
+//  record specifications 
 
 export type RecordType =
  | 'contacts' | 'companies' | 'leads' | 'deals'
@@ -192,7 +192,7 @@ const specOf = (type: RecordType): RecordSpec => {
 /** Exposed for the route layer so it can advertise fields without duplicating them. */
 export const recordSpec = (type: RecordType): Readonly<RecordSpec> => specOf(type);
 
-// ── input normalisation ───────────────────────────────────────────────────────
+//  input normalisation 
 
 const str = (v: unknown, max: number): string | null => {
  if (v === undefined || v === null || v === '') return null;
@@ -510,7 +510,7 @@ function withServerFields(type: RecordType, prepared: Prepared, actor: ActorRef)
  return out;
 }
 
-// ── activity trail ────────────────────────────────────────────────────────────
+//  activity trail 
 
 async function recordActivity(
  scope: TenantScope,
@@ -562,7 +562,7 @@ async function audit(
  });
 }
 
-// ── read ─────────────────────────────────────────────────────────────────────
+//  read 
 
 export type ListQuery = {
  limit?: number;
@@ -687,7 +687,7 @@ export async function getRecord(
  return row;
 }
 
-// ── write ────────────────────────────────────────────────────────────────────
+//  write 
 
 export type WriteResult = { record: Row; created: boolean };
 
@@ -901,7 +901,7 @@ export async function restoreRecord(
  });
 }
 
-// ── deals: stage integrity ────────────────────────────────────────────────────
+//  deals: stage integrity 
 
 /**
  * Moves a deal to another stage.
@@ -968,7 +968,7 @@ export async function moveDealStage(
  });
 }
 
-// ── leads: conversion ────────────────────────────────────────────────────────
+//  leads: conversion 
 
 export type ConvertLeadResult = {
  lead: Row;
@@ -1036,7 +1036,7 @@ export async function convertLead(
  }
 
  return scope.transaction(async (tx) => {
- // ── company ──
+ //  company 
  let companyId: string | null = (lead.company_id as string | null) ?? null;
  let company: Row | null = null;
  if (wantCompany && !companyId) {
@@ -1057,7 +1057,7 @@ export async function convertLead(
  );
  }
 
- // ── contact ──
+ //  contact 
  const contactCols: Prepared = {
  id: newId(), organization_id: actor.organizationId,
  first_name: String(lead.first_name ?? ''),
@@ -1076,7 +1076,7 @@ export async function convertLead(
  if (companyId) contactCols.company_id = companyId;
  const contact = await insert(tx, 'contacts', Object.keys(contactCols), Object.values(contactCols), '*');
 
- // ── deal ──
+ //  deal 
  let deal: Row | null = null;
  if (wantDeal && pipelineId && stageId) {
  const dealCols: Prepared = {
@@ -1098,7 +1098,7 @@ export async function convertLead(
  deal = await insert(tx, 'deals', Object.keys(dealCols), Object.values(dealCols), '*');
  }
 
- // ── mark the lead converted ──
+ //  mark the lead converted 
  const upd = await tx.unsafe.query(
  `UPDATE leads SET status = 'converted', converted_at = now(), converted_contact_id = $3,
  converted_deal_id = $4, updated_at = now(), updated_by = $5
@@ -1131,7 +1131,7 @@ export async function convertLead(
  });
 }
 
-// ── pipelines ────────────────────────────────────────────────────────────────
+//  pipelines 
 
 /**
  * Creates a pipeline together with its default stages, atomically. A pipeline

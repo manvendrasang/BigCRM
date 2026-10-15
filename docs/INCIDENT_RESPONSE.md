@@ -145,7 +145,7 @@ rotation today means a forced reset for every user.
  check failed and that is the incident
 3. Delete the object; mark the attachment row deleted
 4. Review `audit_logs` for the uploader
-5. Confirm no other user can reach the object: presigned URLs are ≤5 min, so
+5. Confirm no other user can reach the object: presigned URLs are 5 min, so
  exposure is bounded
 6. If accepted: treat as an XSS/RCE vector, revoke that user's sessions, and
  report the control gap

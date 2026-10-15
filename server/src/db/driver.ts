@@ -66,7 +66,7 @@ const instrument = async <T>(op: string, fn: () => Promise<T>): Promise<T> => {
  try { return await fn(); } finally { end(); }
 };
 
-// ── node-postgres ────────────────────────────────────────────────────────────
+//  node-postgres 
 class PgDriver implements DbClient {
  readonly kind = 'postgres' as const;
  readonly inTransaction = false;
@@ -185,7 +185,7 @@ class PgTransaction implements DbClient {
  async close() { /* connection is owned by the pool */ }
 }
 
-// ── TLS ──────────────────────────────────────────────────────────────────────
+//  TLS 
 
 /**
  * PostgreSQL TLS configuration (RULE 52).
@@ -241,7 +241,7 @@ function tlsOptions(): boolean | { ca?: string; rejectUnauthorized: boolean } | 
  return opts;
 }
 
-// ── PGlite ───────────────────────────────────────────────────────────────────
+//  PGlite 
 // PGlite is a single in-process session: three concurrent `transaction()`
 // calls share one physical transaction (a second BEGIN is a warning, not a new
 // transaction), so their statements interleave and one caller's ROLLBACK undoes
@@ -330,7 +330,7 @@ class PgliteTransaction implements DbClient {
  async close() { /* owned by the driver */ }
 }
 
-// ── singleton ────────────────────────────────────────────────────────────────
+//  singleton 
 let driver: DbClient | null = null;
 
 export async function getDb(): Promise<DbClient> {

@@ -96,7 +96,7 @@ describe('api client', () => {
  vi.useRealTimers();
  });
 
- // ── rule 1: tokens never touch persistent storage ───────────────────────────
+ //  rule 1: tokens never touch persistent storage 
 
  it('keeps the access token in memory only, never in web storage or a JS-readable cookie', async () => {
  const token = 'eyJhbGciOiJIUzI1NiJ9.access-part.signature-part';
@@ -140,7 +140,7 @@ describe('api client', () => {
  expect(sessionStorage.length).toBe(0);
  });
 
- // ── rule 3: CSRF header ────────────────────────────────────────────────────
+ //  rule 3: CSRF header 
 
  it('attaches the CSRF header to state-changing requests but never to GET', async () => {
  stubFetch(async () => jsonResponse({ data: { ok: true } }));
@@ -166,7 +166,7 @@ describe('api client', () => {
  expect(headersOf(0).has('X-CSRF-Token')).toBe(false);
  });
 
- // ── rule 2: credentials ───────────────────────────────────────────────────
+ //  rule 2: credentials 
 
  it('sends same-origin credentials and never the permissive include mode', async () => {
  stubFetch(async () => jsonResponse({ data: {} }));
@@ -180,7 +180,7 @@ describe('api client', () => {
  }
  });
 
- // ── rule 4: exactly one refresh, exactly one retry ─────────────────────────
+ //  rule 4: exactly one refresh, exactly one retry 
 
  it('refreshes once and retries the original request exactly once after a 401', async () => {
  setAccessToken('stale-access-token');
@@ -339,7 +339,7 @@ describe('api client', () => {
  expect(redirectTo).toBeNull();
  });
 
- // ── rule 5: errors never leak the response body or a token ────────────────
+ //  rule 5: errors never leak the response body or a token 
 
  it('never exposes the raw response body or any token through a thrown error', async () => {
  const leakedToken = 'super-secret-bearer-token-abcdefghijklmnop';
@@ -409,7 +409,7 @@ describe('api client', () => {
  expect(error.message).not.toContain('ECONNREFUSED');
  });
 
- // ── redact() helper ───────────────────────────────────────────────────────
+ //  redact() helper 
 
  it('redacts credential-bearing keys recursively', () => {
  const result = redact({
@@ -440,7 +440,7 @@ describe('api client', () => {
  expect(JSON.stringify(redact(circular))).toContain('[CIRCULAR]');
  });
 
- // ── envelope ──────────────────────────────────────────────────────────────
+ //  envelope 
 
  it('unwraps the documented { data } envelope', async () => {
  stubFetch(async () => jsonResponse({ data: { totalCount: 3 }, requestId: 'r1' }));

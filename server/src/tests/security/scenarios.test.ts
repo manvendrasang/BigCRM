@@ -26,8 +26,8 @@ import { canAssignRole, ROLE_RANK } from '../../services/rbac.ts';
 let pass = 0;
 const failures: string[] = [];
 const T = (scenario: string, label: string, ok: boolean, extra?: unknown): void => {
- if (ok) { pass++; console.log(` [PASS] ${scenario} › ${label}`); }
- else { failures.push(`${scenario} › ${label}`); console.log(` [FAIL] ${scenario} › ${label} ${extra !== undefined ? `-> ${String((extra as Error)?.message ?? extra).slice(0, 120)}` : ''}`); }
+ if (ok) { pass++; console.log(` [PASS] ${scenario}  ${label}`); }
+ else { failures.push(`${scenario}  ${label}`); console.log(` [FAIL] ${scenario}  ${label} ${extra !== undefined ? `-> ${String((extra as Error)?.message ?? extra).slice(0, 120)}` : ''}`); }
 };
 const S = (n: number, title: string) => console.log(`\n=== Scenario ${n}: ${title} ===`);
 /** Asserts a call throws. Returns the error when it did, undefined when it did not. */
@@ -86,7 +86,7 @@ const insertFixtures = async (orgId: string) => {
 const fixturesA = await insertFixtures(A.orgId);
 const fixturesB = await insertFixtures(B.orgId);
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(1, 'Tenant Escape -- user from Org A modifies organizationId to Org B');
 {
  const bContact = await db.query<{ id: string }>(
@@ -123,7 +123,7 @@ S(1, 'Tenant Escape -- user from Org A modifies organizationId to Org B');
  T('S1', "org A's contact count is unchanged", ownCount.rows[0]!.n === 1, ownCount.rows[0]);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(2, 'IDOR -- user A requests Org B resources');
 {
  for (const [label, sql, params] of [
@@ -148,7 +148,7 @@ S(2, 'IDOR -- user A requests Org B resources');
  T('S2', 'removeMember rejects a user id from another org', err !== undefined);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(3, 'Role Escalation -- manager/admin attempts role=owner');
 {
  T('S3', 'admin cannot assign owner', !canAssignRole('admin', 'admin', 'owner'));
@@ -163,7 +163,7 @@ S(3, 'Role Escalation -- manager/admin attempts role=owner');
  T('S3', 'a member cannot change their own role', selfErr !== undefined, selfErr);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(4, 'Stored XSS -- script payload in every user-controlled field');
 {
  const payloads = [
@@ -202,7 +202,7 @@ S(4, 'Stored XSS -- script payload in every user-controlled field');
  sanitizeRichText('<a href="https://x.test">x</a>').includes('noopener'));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(5, 'Object storage isolation -- org A key vs org B object');
 {
  const keyFor = (orgId: string, fileId: string, ext: string) => `organizations/${orgId}/documents/${fileId}${ext}`;
@@ -217,7 +217,7 @@ S(5, 'Object storage isolation -- org A key vs org B object');
  T('S5', 'a forged cross-org key differs from any issued key', forged !== keyB);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(6, 'Malicious upload');
 {
  const limits = { maxBytes: 1024, allowedKinds: ['image', 'pdf', 'csv', 'text'] as const };
@@ -241,7 +241,7 @@ S(6, 'Malicious upload');
  T('S6', 'extension/content mismatch rejected', !mismatch.ok, mismatch.ok ? '' : (mismatch as { reason: string }).reason);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(7, 'SSRF');
 {
  for (const host of ['http://127.0.0.1/x', 'http://169.254.169.254/latest/meta-data/', 'http://10.0.0.1/',
@@ -291,7 +291,7 @@ S(7, 'SSRF');
  T('S7', 'public IPv6 not blocked', !isBlockedAddress('2606:2800:220:1:248:1893:25c8:1946'));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(8, 'CORS -- request from https://evil.example');
 {
  const { env } = await import('../../config/env.ts');
@@ -304,7 +304,7 @@ S(8, 'CORS -- request from https://evil.example');
  T('S8', 'empty allowlist denies rather than allows', !empty.has('https://evil.example'));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(9, 'Session Theft -- revoke, then the token must die');
 {
  const l = await loginUser({ email: 'owner-a@corp-a.test', password: PW, client: C('10.0.0.9') });
@@ -319,7 +319,7 @@ S(9, 'Session Theft -- revoke, then the token must die');
  T('S9', 'refresh from a revoked session is rejected', !refresh.ok, refresh);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(10, 'Password Change -- other sessions must be revoked');
 {
  const s1 = await loginUser({ email: 'owner-a@corp-a.test', password: PW, client: C('10.0.0.10') });
@@ -338,7 +338,7 @@ S(10, 'Password Change -- other sessions must be revoked');
  await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [await hashPassword(PW), s1.actor.userId]);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(11, 'Invitation Abuse -- accept for another identity');
 {
  const invite = await inviteMember(A.actor, { email: 'victim@corp-c.test', role: 'admin', client: C('10.0.0.12'), deliver });
@@ -383,7 +383,7 @@ S(11, 'Invitation Abuse -- accept for another identity');
  (await denied(() => inviteMember(adminActor, { email: 'q@corp-a.test', role: 'owner', client: C('10.0.0.1'), deliver }))) !== undefined);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(12, 'Export Abuse -- a viewer must not export');
 {
  const { can } = await import('../../services/rbac.ts');
@@ -408,7 +408,7 @@ S(12, 'Export Abuse -- a viewer must not export');
  !canAssignRole('viewer', 'viewer', 'sales') && !canAssignRole('viewer', 'viewer', 'admin'));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(13, 'CSV Injection');
 {
  const payloads = [
@@ -434,7 +434,7 @@ S(13, 'CSV Injection');
  T('S13', 'unterminated quote rejected', (() => { try { parseCsv('"abc'); return false; } catch { return true; } })());
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// 
 S(14, 'Audit Tampering');
 {
  const before = await db.query<{ n: number }>('SELECT count(*)::int AS n FROM audit_logs');
@@ -456,7 +456,7 @@ S(14, 'Audit Tampering');
  diff !== null && !('email' in diff) && !('phone' in diff) && !('first_name' in diff));
 }
 
-// ── Supplementary controls ───────────────────────────────────────────────────
+//  Supplementary controls 
 console.log('\n=== Supporting controls ===');
 T('X1', 'pagination cursor is signed and tamper-evident',
  (() => { try { decodeCursor(`${encodeCursor({ t: 'x', id: 'y' }).split('.')[0]}.forged`); return false; } catch { return true; } })());

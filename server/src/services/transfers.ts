@@ -7,7 +7,7 @@
  * large transfer is observable and resumable rather than a request that times
  * out halfway.
  *
- * ── Export ───────────────────────────────────────────────────────────────────
+ *  Export 
  *
  * Synchronous for now: the query pages through the table in batches and the
  * CSV is built in memory, bounded by `MAX_EXPORT_ROWS`. Every cell passes
@@ -20,7 +20,7 @@
  * org's entire table, so member-level export would be a bulk-exfiltration
  * primitive wearing a feature costume.
  *
- * ── Import ───────────────────────────────────────────────────────────────────
+ *  Import 
  *
  * Validating, not blind: the header row must match writable columns for the
  * entity type, every row is parsed with the CSV bounds (max rows, max columns,

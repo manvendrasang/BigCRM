@@ -114,7 +114,7 @@ Legend -- **Status**: `Mitigated` (control implemented + tested) - `Partial`
 |---|---|---|---|---|---|
 | O-01 | Info disclosure | Public bucket | Critical | Block Public Access on; private ACL | Open (infra) |
 | O-02 | Info disclosure | Guess another org's key | Critical | `organizations/{orgId}/documents/{uuid}{ext}` + authorization before signing | Mitigated (key design) / Open (bucket) |
-| O-03 | Elevation | Permanent download link | High | Presigned URL ≤5 min | Open (provider) |
+| O-03 | Elevation | Permanent download link | High | Presigned URL 5 min | Open (provider) |
 | O-04 | Tampering | Overwrite another org's object | High | Server-side key derivation; no user-supplied path | Mitigated |
 | O-05 | Info disclosure | Unencrypted objects | High | SSE-KMS | Open (infra) |
 | O-06 | Repudiation | Unlogged access | Medium | S3 data events -> CloudTrail | Open (infra) |

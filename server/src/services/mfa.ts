@@ -1,7 +1,7 @@
 /**
  * Multi-factor authentication (TOTP, RFC 6238) and recovery codes.
  *
- * ── Why the secret is encrypted at rest ──────────────────────────────────────
+ *  Why the secret is encrypted at rest 
  *
  * A TOTP secret is a bearer credential. Anyone holding it produces a valid code
  * from anywhere, for the current 30-second step, with no user interaction. A
@@ -15,14 +15,14 @@
  * the key used here is not the key used for password hashing: one compromised
  * derivation cannot be pivoted into the other.
  *
- * ── Replay ───────────────────────────────────────────────────────────────────
+ *  Replay 
  *
  * HOTP is deterministic -- a code is valid for its entire 30-second step. An
  * observer who shoulder-surfs a single code could replay it until the step
  * rolls over. `users.mfa_last_used_step` records the accepted step and refuses
  * anything at or below it, so each code is accepted once.
  *
- * ── Enrolment is a three-legged flow, and the secret is not live until it is ──
+ *  Enrolment is a three-legged flow, and the secret is not live until it is 
  *
  * 1. `POST /auth/mfa/enroll` -> returns a secret + otpauth:// URI, stores the
  * encrypted secret with `mfa_enabled` still FALSE.
@@ -73,7 +73,7 @@ export type EnrollStart = {
 const MAX_ATTEMPTS = 5;
 const CIPHER_VERSION = 'v1';
 
-// ── secret encryption ─────────────────────────────────────────────────────────
+//  secret encryption 
 // The field key comes from the configured provider (`lib/kms.ts`): HKDF under
 // SECRETS_PEPPER by default, a KMS-held data key when `MFA_KEY_PROVIDER=kms`.
 // The `info` string is load-bearing -- it must stay byte-identical, or every
@@ -147,7 +147,7 @@ export function decryptSecretWith(
  }
 }
 
-// ── challenge store ───────────────────────────────────────────────────────────
+//  challenge store 
 
 type ChallengeRow = {
  id: string; user_id: string; purpose: ChallengePurpose; attempts: number;
@@ -220,7 +220,7 @@ async function claimChallenge(
  return res.rows.length > 0;
 }
 
-// ── enrollment ────────────────────────────────────────────────────────────────
+//  enrollment 
 
 /**
  * Begins enrollment. The secret is stored encrypted but `mfa_enabled` stays
@@ -355,7 +355,7 @@ export async function completeChallenge(
  throw validationFailed({ code: 'Enter your authentication code.' });
  }
 
- // ── recovery code ──
+ //  recovery code 
  const recovery = await db.query<{ id: string }>(
  `SELECT id FROM mfa_recovery_codes
  WHERE user_id = $1 AND code_hash = $2 AND used_at IS NULL LIMIT 1`,
@@ -379,7 +379,7 @@ export async function completeChallenge(
  return { via: 'recovery' };
  }
 
- // ── TOTP ──
+ //  TOTP 
  const secret = decryptSecret(user.totp_secret_encrypted);
  if (!secret) {
  await db.query('UPDATE mfa_challenges SET consumed_at = $1 WHERE id = $2', [nowIso(), challenge.id]);

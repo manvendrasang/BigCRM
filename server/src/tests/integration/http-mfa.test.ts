@@ -123,7 +123,7 @@ console.log('\n=== MFA over HTTP ===');
  T('and it issues no new recovery codes', reissue.status !== 200
  && !(JSON.stringify(await reissue.clone().json()).includes('recoveryCodes')));
 
- // ── login now requires the second factor ──
+ //  login now requires the second factor 
  const secondLogin = await call('/api/v1/auth/login', json({ email: mfaEmail, password: PW }));
  T('login returns mfa_required, not a session', secondLogin.status === 200, secondLogin.status);
  const sl = await secondLogin.json() as any;

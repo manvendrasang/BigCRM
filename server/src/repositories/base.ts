@@ -173,7 +173,7 @@ export async function initDriver(): Promise<DbClient> {
  return cachedDriver;
 }
 
-// ── identifier allowlist (the only string-interpolated SQL in the codebase) ───
+//  identifier allowlist (the only string-interpolated SQL in the codebase) 
 const IDENT_RE = /^[a-z_][a-z0-9_]{0,40}$/;
 
 /**
@@ -191,7 +191,7 @@ export type SortDirection = 'ASC' | 'DESC';
 export const direction = (v: string | undefined): SortDirection =>
  String(v ?? '').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
-// ── query helpers ────────────────────────────────────────────────────────────
+//  query helpers 
 export type QueryOptions = { limit: number; offset?: number };
 
 /** SELECT with a mandatory tenant predicate. */
@@ -270,7 +270,7 @@ export function keysetClause(
  };
 }
 
-// ── column/table registries ──────────────────────────────────────────────────
+//  column/table registries 
 /** Every table a repository may touch. Anything else is rejected. */
 export const ALL_TABLES = [
  'organizations', 'users', 'organization_members', 'teams', 'team_members',

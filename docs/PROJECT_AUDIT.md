@@ -174,7 +174,7 @@ roles happen to hold `contacts.read`.
 
 ### A-20 - Pagination envelope lies - **Medium - VERIFIED**
 
-`_paginate()` clamps to `page≥1`, `page_size≤100`; the route echoes the **raw**
+`_paginate()` clamps to `page1`, `page_size100`; the route echoes the **raw**
 query values. `?page=0&page_size=9999` -> `{"page":0,"page_size":9999}`.
 
 ### A-21 - Silent no-op role change - **Medium - VERIFIED**
@@ -214,7 +214,7 @@ build: PostgreSQL returns `42P01 relation "o" does not exist`.**
 
 `print()` emits every reset, invite and verification token.
 
-### A-29 - `owner` ≡ `admin` - **Medium - VERIFIED**
+### A-29 - `owner`  `admin` - **Medium - VERIFIED**
 
 `owner-only = []`, `admin-only = []`. The last-owner guard protects a distinction
 that does not exist.

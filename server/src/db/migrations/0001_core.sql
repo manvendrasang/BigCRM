@@ -13,7 +13,7 @@
 -- accepted it silently and PostgreSQL rejected it at runtime. These migrations run
 -- against real PostgreSQL in CI, so that class of defect cannot ship again.
 
--- ── identity & tenancy ───────────────────────────────────────────────────────
+--  identity & tenancy 
 
 CREATE TABLE IF NOT EXISTS organizations (
  id uuid PRIMARY KEY,
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS team_members (
 CREATE INDEX IF NOT EXISTS idx_team_members_org ON team_members (organization_id);
 CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members (user_id);
 
--- ── CRM core ─────────────────────────────────────────────────────────────────
+--  CRM core 
 
 CREATE TABLE IF NOT EXISTS companies (
  id uuid PRIMARY KEY,
@@ -289,7 +289,7 @@ CREATE INDEX IF NOT EXISTS idx_deals_close ON deals (organization_id, expected_c
 ALTER TABLE leads ADD CONSTRAINT leads_converted_deal_fk
  FOREIGN KEY (converted_deal_id) REFERENCES deals(id) ON DELETE SET NULL;
 
--- ── activities, tasks, notes ─────────────────────────────────────────────────
+--  activities, tasks, notes 
 
 CREATE TABLE IF NOT EXISTS activities (
  id uuid PRIMARY KEY,
@@ -349,7 +349,7 @@ CREATE TABLE IF NOT EXISTS notes (
 );
 CREATE INDEX IF NOT EXISTS idx_notes_entity ON notes (organization_id, entity_type, entity_id, created_at DESC) WHERE deleted_at IS NULL;
 
--- ── tags ─────────────────────────────────────────────────────────────────────
+--  tags 
 
 CREATE TABLE IF NOT EXISTS tags (
  id uuid PRIMARY KEY,
@@ -398,7 +398,7 @@ CREATE TABLE IF NOT EXISTS deal_tags (
  PRIMARY KEY (deal_id, tag_id)
 );
 
--- ── custom fields ────────────────────────────────────────────────────────────
+--  custom fields 
 
 CREATE TABLE IF NOT EXISTS custom_fields (
  id uuid PRIMARY KEY,
@@ -440,7 +440,7 @@ CREATE TABLE IF NOT EXISTS custom_field_values (
 CREATE INDEX IF NOT EXISTS idx_cfv_entity ON custom_field_values (organization_id, entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_cfv_text ON custom_field_values (organization_id, field_id) WHERE value_text IS NOT NULL;
 
--- ── attachments & comments ───────────────────────────────────────────────────
+--  attachments & comments 
 
 CREATE TABLE IF NOT EXISTS attachments (
  id uuid PRIMARY KEY,
@@ -476,7 +476,7 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 CREATE INDEX IF NOT EXISTS idx_comments_entity ON comments (organization_id, entity_type, entity_id, created_at DESC) WHERE deleted_at IS NULL;
 
--- ── notifications ────────────────────────────────────────────────────────────
+--  notifications 
 
 CREATE TABLE IF NOT EXISTS notifications (
  id uuid PRIMARY KEY,
@@ -494,7 +494,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications (user_id) WHERE read_at IS NULL;
 
--- ── audit & security telemetry ───────────────────────────────────────────────
+--  audit & security telemetry 
 
 -- Append-only. There is no code path that updates or deletes these rows; a
 -- trigger raises if anyone tries, so tampering fails even at the SQL layer.
@@ -549,7 +549,7 @@ CREATE INDEX IF NOT EXISTS idx_security_events_org ON security_events (organizat
 CREATE INDEX IF NOT EXISTS idx_security_events_sev ON security_events (severity, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_security_events_user ON security_events (user_id, created_at DESC) WHERE user_id IS NOT NULL;
 
--- ── sessions, tokens, invitations ────────────────────────────────────────────
+--  sessions, tokens, invitations 
 
 CREATE TABLE IF NOT EXISTS sessions (
  id uuid PRIMARY KEY,
@@ -656,7 +656,7 @@ CREATE TABLE IF NOT EXISTS saved_views (
 );
 CREATE INDEX IF NOT EXISTS idx_saved_views_owner ON saved_views (organization_id, owner_id) WHERE deleted_at IS NULL;
 
--- ── jobs: imports, exports, webhooks ─────────────────────────────────────────
+--  jobs: imports, exports, webhooks 
 
 CREATE TABLE IF NOT EXISTS import_jobs (
  id uuid PRIMARY KEY,
@@ -736,7 +736,7 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
 CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_pending ON webhook_deliveries (next_attempt_at) WHERE status = 'pending';
 CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_ep ON webhook_deliveries (organization_id, endpoint_id, created_at DESC);
 
--- ── idempotency ──────────────────────────────────────────────────────────────
+--  idempotency 
 
 CREATE TABLE IF NOT EXISTS idempotency_keys (
  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,

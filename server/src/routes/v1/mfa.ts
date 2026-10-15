@@ -48,7 +48,7 @@ function parse<T extends z.ZodTypeAny>(schema: T, body: unknown): z.infer<T> {
  return schema.parse(parsed.data) as z.infer<T>;
 }
 
-// ── authenticated: managing your own second factor ────────────────────────────
+//  authenticated: managing your own second factor 
 
 mfaRouter.use(authenticate);
 
@@ -112,7 +112,7 @@ mfaRouter.post('/disable', csrfGuard, sensitiveActionWindow, asyncRoute(async (r
  res.status(200).json({ data: { enabled: false } });
 }));
 
-// ── public: completing the login challenge ────────────────────────────────────
+//  public: completing the login challenge 
 
 export const publicMfaRouter = Router();
 

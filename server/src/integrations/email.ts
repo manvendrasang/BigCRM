@@ -99,7 +99,7 @@ export function getEmailProvider(): EmailProvider {
 
 export const setEmailProvider = (p: EmailProvider): void => { provider = p; };
 
-// ── templates ────────────────────────────────────────────────────────────────
+//  templates 
 /** Builds an absolute, single-use, expiring URL. The token appears only here. */
 const link = (path: string, token: string): string => `${env.publicUrl}${path}?token=${encodeURIComponent(token)}`;
 

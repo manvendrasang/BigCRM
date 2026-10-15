@@ -37,7 +37,7 @@ function fieldErrors(err: z.ZodError): Record<string, string> {
  return out;
 }
 
-// ── organization ──────────────────────────────────────────────────────────────
+//  organization 
 
 const orgPatch = z.object({
  name: z.string().trim().min(1).max(160).optional(),
@@ -93,7 +93,7 @@ orgRouter.get('/roles', requirePermission('organization.read'), asyncRoute(async
  });
 }));
 
-// ── members ───────────────────────────────────────────────────────────────────
+//  members 
 
 orgRouter.get('/members', requirePermission('users.read'), asyncRoute(async (req, res) => {
  res.json({ data: await listMembers(actorRef(req)) });
@@ -113,7 +113,7 @@ orgRouter.delete('/members/:id', csrfGuard, requirePermission('users.remove'),
  res.json({ data: await removeMember(actorRef(req), String(req.params.id ?? '')) });
  }));
 
-// ── invitations ───────────────────────────────────────────────────────────────
+//  invitations 
 
 const inviteSchema = z.object({
  email: z.string().trim().min(3).max(320).email(),
@@ -207,7 +207,7 @@ publicOrgRouter.post('/invitations/accept', asyncRoute(async (req, res) => {
  });
 }));
 
-// ── teams ─────────────────────────────────────────────────────────────────────
+//  teams 
 
 orgRouter.get('/teams', requirePermission('teams.read'), asyncRoute(async (req, res) => {
  res.json({ data: await listTeams(actorRef(req)) });
@@ -224,7 +224,7 @@ orgRouter.post('/teams', csrfGuard, requirePermission('teams.manage'), asyncRout
  res.status(201).json({ data: await createTeam(actorRef(req), parsed.data.name, parsed.data.description) });
 }));
 
-// ── ownership transfer (owner-only, RULE 27) ──────────────────────────────────
+//  ownership transfer (owner-only, RULE 27) 
 
 const transferSchema = z.object({
  userId: z.string().uuid(),

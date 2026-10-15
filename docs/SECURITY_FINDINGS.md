@@ -226,7 +226,7 @@ notifications and export artefacts indefinitely -- a data-minimisation failure
 
 **Fixed** by `services/retention.ts`:
 
-- batched (≤5,000 rows per table per sweep) so housekeeping never takes the lock
+- batched (5,000 rows per table per sweep) so housekeeping never takes the lock
  that would stall the API
 - a failure on one table is recorded and the sweep continues
 - **never touches `audit_logs`.** The append-only trigger rejects `DELETE`, and

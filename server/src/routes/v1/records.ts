@@ -102,14 +102,14 @@ for (const type of ['contacts', 'companies', 'leads', 'deals', 'pipelines', 'pip
  recordsRouter.use(`/${type}`, r);
 }
 
-// ── pipeline stages (nested read) ─────────────────────────────────────────────
+//  pipeline stages (nested read) 
 
 recordsRouter.get('/pipelines/:id/stages', requirePermission('pipeline_stages.read'),
  asyncRoute(async (req, res) => {
  res.json({ data: await listPipelineStages(actorRef(req), String(req.params.id ?? '')) });
  }));
 
-// ── deal stage movement ───────────────────────────────────────────────────────
+//  deal stage movement 
 
 recordsRouter.post('/deals/:id/stage', csrfGuard, requirePermission('deals.advance'),
  asyncRoute(async (req, res) => {
@@ -119,7 +119,7 @@ recordsRouter.post('/deals/:id/stage', csrfGuard, requirePermission('deals.advan
  res.json({ data: deal });
  }));
 
-// ── lead conversion ───────────────────────────────────────────────────────────
+//  lead conversion 
 
 recordsRouter.post('/leads/:id/convert', csrfGuard, requirePermission('leads.convert'),
  asyncRoute(async (req, res) => {

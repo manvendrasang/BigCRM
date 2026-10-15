@@ -3,7 +3,7 @@
  *
  * Three properties the legacy implementations got wrong are enforced here:
  *
- * 1. owner ≠ admin. In the legacy CRM their permission sets were byte-identical,
+ * 1. owner  admin. In the legacy CRM their permission sets were byte-identical,
  * which made "last owner" protection guard a distinction that did not exist.
  * Here owner holds `organization.delete` and `members.transfer_ownership`,
  * which admin does not.

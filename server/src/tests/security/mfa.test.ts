@@ -43,7 +43,7 @@ const newUser = async (n: string) => {
  return r.user.id;
 };
 
-// ── encryption at rest ────────────────────────────────────────────────────────
+//  encryption at rest 
 console.log('\n=== the TOTP secret is encrypted at rest (BIG-11) ===');
 {
  const a = encryptSecret('JBSWY3DPEHPK3PXP');
@@ -76,7 +76,7 @@ console.log('\n=== the secret in the database is ciphertext ===');
  T('so the half-enrolled secret grants nothing', row!.mfa_enabled === false && Boolean(row!.totp_secret_encrypted));
 }
 
-// ── enrollment ────────────────────────────────────────────────────────────────
+//  enrollment 
 console.log('\n=== enrollment is a three-legged flow ===');
 {
  const userId = await newUser('Enrol2');
@@ -162,7 +162,7 @@ console.log('\n=== enrollment is a three-legged flow ===');
  T('recovery status reports 10 remaining', (await recoveryStatus(userId)).remaining === 10);
 }
 
-// ── login challenge ───────────────────────────────────────────────────────────
+//  login challenge 
 console.log('\n=== login challenge accepts TOTP and recovery codes ===');
 let mfaUserId = '';
 let mfaSecret = '';
@@ -200,7 +200,7 @@ let recoveryCode = '';
  T('the same challenge token cannot be reused', !replay.ok, replay);
 }
 
-// ── concurrent redemption of one challenge ───────────────────────────────────
+//  concurrent redemption of one challenge 
 // Regression: the challenge was only READ by `consumeChallenge`; `consumed_at`
 // was written later and unconditionally. Two parallel requests carrying the same
 // token both passed the read, both verified, and both went on to mint a session --
@@ -239,7 +239,7 @@ console.log('\n=== a challenge cannot be redeemed twice concurrently ===');
  T('the same TOTP step cannot be redeemed again under a new challenge', !replayStep.ok, replayStep);
 }
 
-// ── replay inside the same 30-second step ─────────────────────────────────────
+//  replay inside the same 30-second step 
 console.log('\n=== a TOTP code cannot be replayed inside its step ===');
 {
  // A fresh user so mfa_last_used_step starts null.
@@ -275,7 +275,7 @@ console.log('\n=== a TOTP code cannot be replayed inside its step ===');
  !replay.ok && /credential|valid/i.test(String(replay.e.message)), replay.ok ? '' : replay.e.message);
 }
 
-// ── recovery codes ────────────────────────────────────────────────────────────
+//  recovery codes 
 console.log('\n=== recovery codes are single-use ===');
 {
  const c1 = await startChallenge(mfaUserId);
@@ -296,7 +296,7 @@ console.log('\n=== recovery codes are single-use ===');
  })(), recoveryCode);
 }
 
-// ── brute-force bounding ──────────────────────────────────────────────────────
+//  brute-force bounding 
 console.log('\n=== a challenge bounds its own attempts ===');
 {
  const userId = await newUser('Brute1');
@@ -332,7 +332,7 @@ console.log('\n=== a challenge bounds its own attempts ===');
  (await attempt(() => completeChallenge(userId, ch.token, totpCode(secret)))).ok === false);
 }
 
-// ── disable requires the factor ───────────────────────────────────────────────
+//  disable requires the factor 
 console.log('\n=== disabling MFA requires the second factor ===');
 {
  const userId = await newUser('Disable1');
@@ -360,7 +360,7 @@ console.log('\n=== disabling MFA requires the second factor ===');
  'SELECT 1 FROM mfa_recovery_codes WHERE user_id = $1', [userId])).rows.length === 0);
 }
 
-// ── regenerate ────────────────────────────────────────────────────────────────
+//  regenerate 
 console.log('\n=== regenerating recovery codes proves the factor first ===');
 {
  const userId = await newUser('Regen1');
@@ -397,7 +397,7 @@ console.log('\n=== regenerating recovery codes proves the factor first ===');
  }
 }
 
-// ── cross-tenant: a challenge token from one user cannot serve another ────────
+//  cross-tenant: a challenge token from one user cannot serve another 
 console.log('\n=== a challenge token is bound to its user ===');
 {
  const other = await newUser('Other1');
@@ -408,7 +408,7 @@ console.log('\n=== a challenge token is bound to its user ===');
  T('a bogus challenge token is refused by the resolver', !resolveOther.ok, resolveOther);
 }
 
-// ── rekey: resealing secrets between providers ─────────────────────────────
+//  rekey: resealing secrets between providers 
 console.log('\n=== rekeying MFA secrets between providers ===');
 {
  const { createEnvProvider, __testing: kmsTesting } = await import('../../lib/kms.ts');

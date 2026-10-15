@@ -6,7 +6,7 @@
  * the options for selects, and whether the field is required; every value
  * write is validated against the definition before it touches the database.
  *
- * ── Validation lives here, not in the route ──────────────────────────────────
+ *  Validation lives here, not in the route 
  *
  * The route parses the envelope; this module decides whether a value is
  * acceptable for a field. A `number` field receiving `"twelve"` is rejected, a
@@ -15,7 +15,7 @@
  * database CHECK constraints (`key ~ '^[a-z]...'`, `field_type IN (...)`) are
  * the backstop, not the mechanism.
  *
- * ── Tenant scope ─────────────────────────────────────────────────────────────
+ *  Tenant scope 
  *
  * Both tables are in TENANT_TABLES, and every statement here carries
  * `organization_id` via `TenantScope`. A field defined by org A is invisible

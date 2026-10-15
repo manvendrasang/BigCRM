@@ -187,7 +187,7 @@ function build(): Env {
  if (s === pepper) fail('SECRETS_PEPPER must differ from the JWT secrets');
  }
 
- // ── field-encryption key provider (MFA secrets) ──
+ //  field-encryption key provider (MFA secrets) 
  // Unset means `env`: current behaviour, HKDF under SECRETS_PEPPER. `kms`
  // demands the encrypted data key here, at startup, so a half-configured
  // deployment refuses to boot rather than silently staying on env keys.
@@ -211,7 +211,7 @@ function build(): Env {
  fail('DATABASE_URL is required in production; embedded Postgres is a dev/test convenience only.');
  }
 
- // ── TLS posture (RULE 52) ──
+ //  TLS posture (RULE 52) 
  const sslRaw = (raw.DATABASE_SSL?.trim() || (isProd ? 'verify-full' : 'disable')).toLowerCase();
  if (!['disable', 'require', 'verify-full'].includes(sslRaw)) {
  fail("DATABASE_SSL must be one of: disable, require, verify-full");

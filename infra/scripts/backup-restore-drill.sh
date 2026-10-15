@@ -50,7 +50,7 @@ check() { # check <label> <expected> <actual>
 
 psql_q() { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "${2:-$SOURCE_DB}" -tAc "$1"; }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 step "0. Preconditions"
 note "container : $DB_CONTAINER"
 note "source db : $SOURCE_DB"
@@ -62,7 +62,7 @@ fi
 note "database size: $(psql_q "SELECT pg_size_pretty(pg_database_size('$SOURCE_DB'));")"
 note "server : $(psql_q 'SHOW server_version;')"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 step "1. Baseline -- counts and checksums from the LIVE database"
 : > "${WORKDIR}/baseline.txt"
 for t in "${TABLES[@]}"; do
@@ -73,7 +73,7 @@ cat "${WORKDIR}/baseline.txt" | sed 's/^/ /'
 TOTAL_ROWS=$(awk -F'|' '{s+=$2} END {print s}' "${WORKDIR}/baseline.txt")
 note "total rows: $TOTAL_ROWS"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 step "2. Backup -- timed"
 DUMP_START=$(date +%s%N)
 docker exec "$DB_CONTAINER" pg_dump -U "$DB_USER" -d "$SOURCE_DB" \
@@ -91,14 +91,14 @@ check "the dump is not empty" "yes" "$([ "$DUMP_BYTES" -gt 1000 ] && echo yes ||
 note "dump size : $(numfmt --to=iec "$DUMP_BYTES")"
 note "dump time : ${DUMP_MS} ms"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 step "3. Simulate the disaster -- drop the target"
 docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d postgres -q \
  -c "DROP DATABASE IF EXISTS $RESTORE_DB;" -c "CREATE DATABASE $RESTORE_DB;" 2>&1 | sed 's/^/ /'
 check "the restore target now exists and is empty" \
  "$(psql_q "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" "$RESTORE_DB")" "0"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 step "4. Restore -- timed"
 REST_START=$(date +%s%N)
 docker cp "${WORKDIR}/dump.pgc" "$DB_CONTAINER:/tmp/drill.pgc" >/dev/null
@@ -114,7 +114,7 @@ docker exec "$DB_CONTAINER" rm -f /tmp/drill.pgc >/dev/null 2>&1
 check "pg_restore exited 0" "0" "$rc"
 note "restore time: ${REST_MS} ms"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 step "5. Integrity -- every table matches the baseline"
 : > "${WORKDIR}/restored.txt"
 for t in "${TABLES[@]}"; do
@@ -130,7 +130,7 @@ else
  fail=$((fail+1))
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 step "6. The restored database is FUNCTIONAL, not merely populated"
 # A dump can restore cleanly and still be useless if constraints, indexes or
 # triggers did not survive. Each of these is checked by *doing* the thing.
@@ -190,13 +190,13 @@ check "index count matches" "$SRC_IDX" "$RST_IDX"
 check "schema_migrations present" "yes" \
  "$([ "$(psql_q "SELECT count(*) FROM schema_migrations;" "$RESTORE_DB")" -gt 0 ] && echo yes || echo no)"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 step "7. Cleanup"
 docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d postgres -q -c "DROP DATABASE IF EXISTS $RESTORE_DB;" 2>&1 | sed 's/^/ /'
 check "the drill database was removed" "0" \
  "$(psql_q "SELECT count(*) FROM pg_database WHERE datname='$RESTORE_DB';")"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 hr
 cat > "$RESULTS" <<EOF
 # Backup / restore drill -- measured

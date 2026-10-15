@@ -70,7 +70,7 @@ must exist.
 |---|---|---|
 | API | Stateless | Scale horizontally; cookies are the only session state |
 | Web | Stateless | TaskFlow's `NODE_ENV`-gated static serving is **not** reproduced; static assets belong on the CDN |
-| DB connections | `DB_POOL_MAX` per task | Bound total: tasks × pool ≤ RDS max connections |
+| DB connections | `DB_POOL_MAX` per task | Bound total: tasks × pool  RDS max connections |
 | Long operations | Single request | Must become background jobs (exports, imports) |
 | Worker | Not built | SQS with a DLQ |
 | Cache | Not used | If added, keys must include `organizationId` + `userId` -- never tenant-agnostic (RULE 78) |

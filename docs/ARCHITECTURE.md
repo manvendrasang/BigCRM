@@ -17,10 +17,10 @@
 
 ```
 routes (HTTP, not yet written)
- └─ services business rules - transactions - audit - notifications
- └─ repositories/base.ts TenantScope + identifier allowlists
- └─ db/driver.ts pg Pool (prod) | PGlite (dev/test)
- └─ PostgreSQL 17 39 tables - 89 FKs - 128 indexes
+  services business rules - transactions - audit - notifications
+  repositories/base.ts TenantScope + identifier allowlists
+  db/driver.ts pg Pool (prod) | PGlite (dev/test)
+  PostgreSQL 17 39 tables - 89 FKs - 128 indexes
 ```
 
 Dependencies point downward only. Services never import Express; repositories

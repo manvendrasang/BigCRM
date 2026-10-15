@@ -76,7 +76,7 @@ function renderWithAuth(element: JSX.Element): void {
 }
 
 describe('RelatedTasks', () => {
- it('lists only this record’s tasks and links them', async () => {
+ it('lists only this records tasks and links them', async () => {
  stub();
  renderWithAuth(<RelatedTasks entityType="company" entityId="c1" />);
 
@@ -103,7 +103,7 @@ describe('RelatedTasks', () => {
 });
 
 describe('RelatedDeals', () => {
- it('lists the company’s deals and quick-add presets the company', async () => {
+ it('lists the companys deals and quick-add presets the company', async () => {
  const user = userEvent.setup();
  stub();
  renderWithAuth(<RelatedDeals companyId="c1" />);

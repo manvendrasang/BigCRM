@@ -7,7 +7,7 @@
  */
 import { api } from './api';
 
-// ── saved views ─────────────────────────────────────────────────────────────
+//  saved views 
 
 export interface SavedViewRow {
  id: string;
@@ -38,7 +38,7 @@ export async function deleteView(id: string): Promise<void> {
  await api.del(`/views/${encodeURIComponent(id)}`);
 }
 
-// ── notifications ───────────────────────────────────────────────────────────
+//  notifications 
 
 export interface NotificationRow {
  id: string;
@@ -73,7 +73,7 @@ export async function markAllNotificationsRead(): Promise<{ marked: number }> {
  return body.data;
 }
 
-// ── audit logs ─────────────────────────────────────────────────────────────
+//  audit logs 
 
 export interface AuditRow {
  id: string;
@@ -112,7 +112,7 @@ export async function listAuditLogs(filters: {
  return body as unknown as { items: AuditRow[]; total: number };
 }
 
-// ── activities ──────────────────────────────────────────────────────────────
+//  activities 
 
 export interface ActivityRow {
  id: string;
@@ -136,7 +136,7 @@ export async function listActivities(entityType: string, entityId: string): Prom
  return Array.isArray(body) ? (body as ActivityRow[]) : [];
 }
 
-// ── calendar ──────────────────────────────────────────────────────────────
+//  calendar 
 
 export interface CalendarMeeting {
  id: string;

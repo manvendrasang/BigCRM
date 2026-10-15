@@ -35,7 +35,7 @@ export const normaliseCompanyName = (v: unknown): string =>
  .normalize('NFKC')
  .toLowerCase()
  .replace(/&/g, ' and ')
- .replace(/[.,'’`]/g, ' ')
+ .replace(/[.,'`]/g, ' ')
  .replace(/\b(inc|llc|ltd|limited|corp|corporation|co|company|gmbh|plc|sa|sas|ag|bv|nv|pty|llp|pllc)\b/g, ' ')
  .replace(/\s+/g, ' ')
  .trim();

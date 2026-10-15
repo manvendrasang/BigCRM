@@ -2,7 +2,7 @@
 /**
  * Load / performance harness (item 5).
  *
- * ── Why this exists ──────────────────────────────────────────────────────────
+ *  Why this exists 
  *
  * Every latency figure in docs/ was either inherited from a frozen repo or
  * absent. Nothing in this codebase had ever been measured under concurrency, so
@@ -11,7 +11,7 @@
  * PostgreSQL over `verify-full` -- not PGlite, where an in-process WASM database
  * would report latencies that describe nothing about deployment.
  *
- * ── What it measures, and what it deliberately does not ──────────────────────
+ *  What it measures, and what it deliberately does not 
 //
  * Measured: throughput (req/s), and latency percentiles p50/p90/p95/p99/max,
  * per endpoint and overall. Percentiles rather than a mean, because a mean
@@ -25,7 +25,7 @@
  * the correctness suite; sustained write throughput needs a dedicated seeded
  * environment and is recorded as unmeasured rather than guessed.
  *
- * ── Honest limits of this tool ───────────────────────────────────────────────
+ *  Honest limits of this tool 
  *
  * It runs on the same host as the target, so it measures the application and
  * database, not a network. Real client latency adds RTT and TLS on top. The
@@ -65,7 +65,7 @@ const CONCURRENCY = Number(process.env.LOAD_CONCURRENCY ?? 20);
 // configures the target with, and can be overridden when they differ.
 const ORIGIN = process.env.LOAD_ORIGIN ?? 'https://app.load.example';
 
-// ── reporting primitives ─────────────────────────────────────────────────────
+//  reporting primitives 
 
 /**
  * Percentile by nearest-rank on a sorted array.
@@ -110,7 +110,7 @@ class Recorder {
  }
 }
 
-// ── auth ─────────────────────────────────────────────────────────────────────
+//  auth 
 
 async function login() {
  const res = await fetch(`${BASE}/api/v1/auth/login`, {
@@ -132,7 +132,7 @@ async function login() {
  return token;
 }
 
-// ── scenarios ────────────────────────────────────────────────────────────────
+//  scenarios 
 //
 // Each scenario is a description plus a request builder. They are the queries a
 // CRM actually serves: list a record type with pagination and a tenant scope,
@@ -180,7 +180,7 @@ const scenarios = (token) => [
  init: { headers: { authorization: `Bearer ${token}` } },
  }),
  },
- // ── Second wave (2026-10-12) ───────────────────────────────────────────────
+ //  Second wave (2026-10-12) 
  // Without these the numbers below describe an API that no longer exists:
  // reports aggregate across records, and the audit log is the one endpoint
  // whose row count grows without bound as the system is used, so it is the
@@ -217,7 +217,7 @@ const scenarios = (token) => [
  init: { headers: { authorization: `Bearer ${token}` } },
  }),
  },
- // ── Calendar (2026-10-14) ──────────────────────────────────────────────────
+ //  Calendar (2026-10-14) 
  // Two-table range read (activities + tasks) behind one endpoint -- the
  // heaviest read added since the second wave, and the one whose row counts
  // grow with meetings and dated tasks rather than staying flat.
@@ -231,7 +231,7 @@ const scenarios = (token) => [
  },
 ];
 
-// ── runner ───────────────────────────────────────────────────────────────────
+//  runner 
 
 /**
  * Drives one scenario with `CONCURRENCY` workers for `DURATION_MS`.
@@ -269,7 +269,7 @@ async function runScenario(scenario, durationMs) {
  return rec.summary(durationMs / 1000);
 }
 
-// ── main ─────────────────────────────────────────────────────────────────────
+//  main 
 
 const envProbe = await fetch(`${BASE}/health`).catch(() => null);
 if (!envProbe?.ok) {
@@ -306,7 +306,7 @@ for (const sc of list) {
  process.stdout.write('\n');
 }
 
-// ── report ───────────────────────────────────────────────────────────────────
+//  report 
 
 const stamp = new Date().toISOString().slice(0, 10);
 const outPath = join(OUT_DIR, `load-test-${stamp}.md`);

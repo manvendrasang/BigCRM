@@ -129,7 +129,7 @@ executed in another.
 ## 2. Completed
 
 ### Foundations
-- [x] TypeScript monorepo, workspaces `server` + `client`, Node ≥22
+- [x] TypeScript monorepo, workspaces `server` + `client`, Node 22
 - [x] Fail-closed configuration: 60+ validated settings, startup aborts on any
  missing/insecure value (`server/src/config/env.ts`)
 - [x] `NODE_ENV` never gates CSP, CORS, or logging -- each has its own variable
