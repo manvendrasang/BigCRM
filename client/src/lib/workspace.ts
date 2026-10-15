@@ -257,6 +257,10 @@ export interface MemberRow {
  status: string;
  mfaEnabled: boolean;
  lastLoginAt: string | null;
+ /** Whether THIS signed-in actor may set this member's password. Server-decided. */
+ canResetPassword: boolean;
+ /** An open reset request from this member, if any. Drives the roster badge. */
+ passwordResetRequested: boolean;
 }
 
 export interface CreatedMember {
@@ -303,4 +307,35 @@ export async function createMember(input: {
  name?: string;
 }): Promise<CreatedMember> {
  return api.post<CreatedMember>('/org/members', input);
+}
+
+export interface PasswordResetRequestResult {
+ requestId: string;
+ requestedAt: string;
+ /** How many owners/admins were notified. 0 when an open request already existed. */
+ notified: number;
+}
+
+/**
+ * A member asks the office to set a new password. The request lands in the
+ * notifications of every owner/admin, who then set the password by hand.
+ * Idempotent while a request is open.
+ */
+export async function requestPasswordReset(): Promise<PasswordResetRequestResult> {
+ return api.post<PasswordResetRequestResult>('/org/members/password-reset-request');
+}
+
+/**
+ * An owner/admin sets a member's password directly. `password` is typed by the
+ * human handling the request (the UI collects it twice; the server validates a
+ * single value). On success the member's sessions are revoked.
+ */
+export async function resetMemberPassword(
+ userId: string,
+ password: string,
+): Promise<{ userId: string; sessionsRevoked: number }> {
+ return api.post<{ userId: string; sessionsRevoked: number }>(
+ `/org/members/${encodeURIComponent(userId)}/password`,
+ { password },
+ );
 }

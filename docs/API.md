@@ -125,6 +125,8 @@ constraint refuses `mfa_enabled = true` without one.
 | POST | `/api/v1/org/members` | `users.create` | **In-house account creation.** Email + role in; a generated password is returned **once** and never re-readable. Ownership can never be minted here |
 | PATCH | `/api/v1/org/members/{id}/role` | `users.update` | Hierarchy enforced; self-change refused; sessions revoked |
 | DELETE | `/api/v1/org/members/{id}` | `users.remove` | Last-owner protected |
+| POST | `/api/v1/org/members/password-reset-request` | any member (not owner) | Member-initiated. Notifies every owner/admin; idempotent while a request is open; requires the member to have logged in at least once |
+| POST | `/api/v1/org/members/{id}/password` | `users.reset_password` | Owner/admin sets a member's password (typed, never generated/echoed). Owner may reset anyone including owners; admin may reset anyone **except** an owner. Revokes the member's sessions and closes any open request |
 | POST | `/api/v1/org/members/transfer-ownership` | owner only | Re-authentication required; atomic; revokes both users' sessions |
 | GET | `/api/v1/org/invitations` | `users.invite` | -- |
 | POST | `/api/v1/org/invitations` | `users.invite` | Role bounded by inviter; **token never in the response** |

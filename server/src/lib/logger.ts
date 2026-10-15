@@ -31,6 +31,7 @@ export type SecurityEventName =
  | 'session.created' | 'session.revoked' | 'session.revoked_all' | 'session.expired'
  | 'session.idle_timeout' | 'session.absolute_timeout'
  | 'member.created' | 'member.invited' | 'member.invite_accepted' | 'member.role_changed' | 'member.removed'
+ | 'member.password_reset_requested' | 'member.password_reset'
  | 'permission.denied' | 'tenant.violation_attempt' | 'idor.blocked'
  | 'rate_limit.blocked' | 'cors.blocked' | 'csrf.blocked'
  | 'upload.rejected' | 'ssrf.blocked' | 'export.created' | 'import.started' | 'import.completed'

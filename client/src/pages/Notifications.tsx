@@ -96,9 +96,27 @@ export function Notifications(): JSX.Element {
  {items.map((n) => (
  <tr key={n.id}>
  {/* Links are server-issued internal paths (e.g. `/calendar`
- on a meeting invite); anything else renders as text so a
- stored absolute URL can never become a link out. */}
- <td>{n.link && n.link.startsWith('/') ? <Link to={n.link}>{n.title}</Link> : n.title}</td>
+ on a meeting invite, `/settings?member=<id>` on a password-reset
+ request); anything else renders as text so a stored absolute URL
+ can never become a link out. Following one marks it read. */}
+ <td>
+ {n.link && n.link.startsWith('/') ? (
+ <Link
+ to={n.link}
+ onClick={() => {
+ if (!n.readAt) {
+ // Fire-and-forget: navigation unmounts this page, so we do
+ // not reload the list; the badge catches up on next load.
+ void markNotificationRead(n.id).catch(() => {});
+ }
+ }}
+ >
+ {n.title}
+ </Link>
+ ) : (
+ n.title
+ )}
+ </td>
  <td>{n.type}</td>
  <td>{new Date(n.createdAt).toLocaleString()}</td>
  <td>{n.readAt ? 'Read' : 'Unread'}</td>

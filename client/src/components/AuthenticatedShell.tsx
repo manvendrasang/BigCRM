@@ -109,7 +109,7 @@ export function AuthenticatedShell({ children }: { children: ReactNode }): JSX.E
  </div>
  </header>
 
- <AppNav unreadCount={unread} drawerOpen={navOpen} onNavigate={() => setNavOpen(false)} />
+ <AppNav unreadCount={unread} drawerOpen={navOpen} role={role} onNavigate={() => setNavOpen(false)} />
 
  <main className="app-main">{children}</main>
  </div>

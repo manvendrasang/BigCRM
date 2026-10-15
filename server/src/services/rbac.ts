@@ -55,6 +55,7 @@ const P = {
  usersInvite: 'users.invite',
  usersUpdate: 'users.update',
  usersRemove: 'users.remove',
+ usersResetPassword: 'users.reset_password',
  transfer: 'members.transfer_ownership',
  teamsRead: 'teams.read',
  teamsManage: 'teams.manage',
@@ -93,17 +94,34 @@ const READERS = [
  ...crud('tasks', ['read']), ...crud('notes', ['read']),
  ...crud('activities', ['read']), ...crud('tags', ['read']),
  ...crud('attachments', ['read']), ...crud('comments', ['read']),
- P.reportsRead, P.customFieldsRead, P.savedViewsRead,
 ];
+
+/**
+ * Reporting, custom-field and saved-view READ access.
+ *
+ * These are deliberately NOT part of `READERS`: a viewer is a strictly
+ * read-only seat on records, and "read-only" must not also mean "reads the
+ * earnings dashboards, the schema of every custom field, and every saved
+ * view". Sales and above hold them; a viewer does not.
+ */
+const ANALYTICS_READERS = [P.reportsRead, P.customFieldsRead, P.savedViewsRead];
 
 /**
  * The authoritative matrix. `owner` and `admin` intentionally differ.
  */
 export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<string>> = {
- viewer: new Set([...READERS]),
+ /**
+  * Viewer: a strictly read-only seat. `READERS` gives read on every record
+  * type but NOT reporting, custom fields or saved views (see
+  * `ANALYTICS_READERS`). The single write is `tasks.update`, and the records
+  * service narrows that to tasks the viewer is the assignee of -- a viewer
+  * answers their own work items and nothing else.
+  */
+ viewer: new Set([...READERS, ...crud('tasks', ['update'])]),
 
  sales: new Set([
  ...READERS,
+ ...ANALYTICS_READERS,
  ...crud('contacts', ['create', 'update', 'assign', 'archive']),
  ...crud('companies', ['create', 'update']),
  ...crud('leads', ['create', 'update', 'assign', 'convert']),
@@ -117,6 +135,7 @@ export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<string>> = {
 
  manager: new Set([
  ...READERS,
+ ...ANALYTICS_READERS,
  ...crud('contacts', ['create', 'update', 'delete', 'assign', 'archive', 'restore', 'merge', 'bulk']),
  ...crud('companies', ['create', 'update', 'delete', 'assign', 'archive', 'merge', 'bulk']),
  ...crud('leads', ['create', 'update', 'delete', 'assign', 'convert', 'bulk']),
@@ -136,6 +155,7 @@ export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<string>> = {
 
  admin: new Set([
  ...READERS,
+ ...ANALYTICS_READERS,
  ...crud('contacts', ['create', 'update', 'delete', 'assign', 'archive', 'restore', 'merge', 'bulk']),
  ...crud('companies', ['create', 'update', 'delete', 'assign', 'archive', 'merge', 'bulk']),
  ...crud('leads', ['create', 'update', 'delete', 'assign', 'convert', 'bulk']),
@@ -153,6 +173,7 @@ export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<string>> = {
  ...crud('imports'), ...crud('exports'),
  P.orgRead, P.orgUpdate,
  P.usersRead, P.usersCreate, P.usersInvite, P.usersUpdate, P.usersRemove,
+ P.usersResetPassword,
  P.teamsRead, P.teamsManage,
  P.reportsRead, P.reportsExport,
  P.settingsRead, P.settingsUpdate,
@@ -164,6 +185,7 @@ export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<string>> = {
 
  owner: new Set([
  ...READERS,
+ ...ANALYTICS_READERS,
  ...crud('contacts', ['create', 'update', 'delete', 'assign', 'archive', 'restore', 'merge', 'bulk']),
  ...crud('companies', ['create', 'update', 'delete', 'assign', 'archive', 'merge', 'bulk']),
  ...crud('leads', ['create', 'update', 'delete', 'assign', 'convert', 'bulk']),
@@ -181,6 +203,7 @@ export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<string>> = {
  ...crud('imports'), ...crud('exports'),
  P.orgRead, P.orgUpdate, P.orgDelete,
  P.usersRead, P.usersCreate, P.usersInvite, P.usersUpdate, P.usersRemove, P.transfer,
+ P.usersResetPassword,
  P.teamsRead, P.teamsManage,
  P.reportsRead, P.reportsExport,
  P.settingsRead, P.settingsUpdate,
@@ -263,6 +286,25 @@ export function canAssignRole(actorRole: Role, targetCurrentRole: Role | null, n
 /** Only an owner may delete/suspend/transfer. */
 export const canRemoveMember = (actorRole: Role, targetCurrentRole: Role): boolean =>
  actorRole === 'owner' && ROLE_RANK[targetCurrentRole] < ROLE_RANK.owner;
+
+/**
+ * Who may set somebody else's password (Settings > Members > Reset password).
+ *
+ * The rule is intentionally narrower than the rank comparison used for role
+ * changes:
+ * * An owner may reset every role, including another owner.
+ * * An admin may reset anyone EXCEPT an owner. An admin is a peer of another
+ *   admin, so admins may reset each other -- the only hard ceiling is owner.
+ * * Nobody below admin may reset anyone.
+ *
+ * "Owner can only be reset by an owner" is a data statement, not a UI one:
+ * the check is repeated in the service so a hand-rolled request cannot skip it.
+ */
+export function canResetPassword(actorRole: Role, targetRole: Role): boolean {
+ if (!can(actorRole, 'users.reset_password')) return false;
+ if (targetRole === 'owner') return actorRole === 'owner';
+ return actorRole === 'owner' || actorRole === 'admin';
+}
 
 /**
  * Last-owner protection (RULE 28). Returns a reason string when the change would

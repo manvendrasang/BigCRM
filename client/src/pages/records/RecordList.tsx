@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
 import { field, listRecords, money } from '../../lib/records';
 import type { RecordType } from '../../lib/records';
 import { RECORD_CONFIGS } from '../../lib/recordConfig';
@@ -59,6 +60,10 @@ function recordId(record: unknown): string | null {
 
 export function RecordList({ type }: { type: RecordType }): JSX.Element {
  const config = RECORD_CONFIGS[type];
+ const { actor } = useAuth();
+ // A viewer holds no `*.create` permission; the server would 403 the form.
+ // Hide the link rather than offer a door that only opens onto an error.
+ const canCreate = actor?.role !== 'viewer';
  const [searchParams, setSearchParams] = useSearchParams();
  const q = searchParams.get('q') ?? '';
 
@@ -126,9 +131,11 @@ export function RecordList({ type }: { type: RecordType }): JSX.Element {
  Search
  </button>
  </form>
+ {canCreate && (
  <Link className="btn btn-primary btn-auto" to="new">
  New {config.singular}
  </Link>
+ )}
  {type === 'deals' && (
  <Link className="btn btn-secondary btn-auto" to="/deals/board">
  Board view

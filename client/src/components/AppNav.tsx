@@ -29,15 +29,32 @@ const SECTIONS = [
  { to: '/settings', label: 'Settings' },
 ] as const;
 
+/**
+ * Links a viewer must not see.
+ *
+ * A viewer is a strictly read-only seat: the RBAC matrix gives them no
+ * `reports.read` (earnings), no `saved_views.read` and no `audit.read`, so the
+ * server rejects these pages regardless. Hiding the links keeps the nav honest
+ * instead of offering doors that only open onto a "you need permission" note.
+ * Every other section stays, because a viewer reads records.
+ */
+const VIEWER_HIDDEN: readonly string[] = ['/reports', '/audit', '/views'];
+
 export function AppNav({
  unreadCount = 0,
  drawerOpen = false,
  onNavigate,
+ role,
 }: {
  unreadCount?: number;
  drawerOpen?: boolean;
  onNavigate?: () => void;
+ /** Current actor role; drives which links are offered. */
+ role?: string;
 }): JSX.Element {
+ const sections = role === 'viewer'
+ ? SECTIONS.filter((s) => !VIEWER_HIDDEN.includes(s.to))
+ : SECTIONS;
  return (
  <>
  <div
@@ -47,7 +64,7 @@ export function AppNav({
  onClick={onNavigate}
  />
  <nav id="primary-nav" className="app-nav" aria-label="Primary" data-open={drawerOpen}>
- {SECTIONS.map((s) => (
+ {sections.map((s) => (
  <NavLink
  key={s.to}
  to={s.to}

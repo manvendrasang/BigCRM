@@ -16,7 +16,7 @@
 import { migrate } from '../../db/migrate.ts';
 await migrate();
 import { registerUser, loginUser } from '../../services/auth.ts';
-import { createMember, listMembers } from '../../services/org.ts';
+import { createMember, listMembers, requestPasswordReset, resetMemberPassword } from '../../services/org.ts';
 import type { ActorRef } from '../../services/org.ts';
 import { createApp } from '../../app.ts';
 
@@ -73,7 +73,14 @@ console.log('\n=== service: create and list ===');
  const row = list.find((m) => m.email === 'new-hire@corp.io');
  T('the new member appears on the roster', row !== undefined);
  T('with the assigned role and active status', row?.role === 'sales' && row?.status === 'active', row && { role: row.role, status: row.status });
- T('the roster response carries no password material', !JSON.stringify(list).toLowerCase().includes('password'), JSON.stringify(list).slice(0, 90));
+ T('the roster response carries no password material',
+ !JSON.stringify(list).toLowerCase().includes('password_hash')
+ && !JSON.stringify(list).toLowerCase().includes('generatedpassword')
+ && !JSON.stringify(list).toLowerCase().includes('"password"'),
+ JSON.stringify(list).slice(0, 90));
+ T('the roster says who this actor may reset',
+ list.every((m) => typeof m.canResetPassword === 'boolean'), list[0] && { role: list[0].role, canResetPassword: list[0].canResetPassword });
+ T('the owner may reset everyone', list.every((m) => m.canResetPassword));
 }
 
 console.log('\n=== the generated password works end to end ===');
@@ -107,6 +114,63 @@ console.log('\n=== duplicates and role bounds ===');
 
  const ok = await createMember(admin, { email: 'admin-made@corp.io', role: 'sales' });
  T('an admin can mint a lower-ranked member', ok.membershipRole === 'sales', ok.membershipRole);
+}
+
+console.log('\n=== password reset: a member requests, the office completes ===');
+{
+ const roster = await listMembers(owner);
+ const newHire = roster.find((m) => m.email === 'new-hire@corp.io');
+ if (!newHire) throw new Error('fixture missing: new-hire');
+ const salesActorRef: ActorRef = {
+  userId: newHire.user_id, organizationId: owner.organizationId, role: 'sales', email: newHire.email,
+ };
+
+ const req = await requestPasswordReset(salesActorRef);
+ T('a member can open a reset request', typeof req.requestId === 'string' && req.requestId.length > 0);
+ T('owners and admins are notified', req.notified >= 2, req.notified);
+
+ const again = await requestPasswordReset(salesActorRef);
+ T('a repeated request is idempotent', again.requestId === req.requestId && again.notified === 0, again);
+
+ const adminRoster = await listMembers(admin);
+ const pending = adminRoster.find((m) => m.user_id === newHire.user_id);
+ T('the roster flags the pending request', pending?.passwordResetRequested === true);
+ T('the admin is told they may reset a sales member', pending?.canResetPassword === true);
+ T('the admin is NOT offered a reset for the owner',
+  adminRoster.find((m) => m.role === 'owner')?.canResetPassword === false);
+
+ let weak = false;
+ try { await resetMemberPassword(owner, newHire.user_id, 'password'); } catch { weak = true; }
+ T('a weak password is refused', weak);
+
+ let adminOnOwner = false;
+ try { await resetMemberPassword(admin, owner.userId, 'Qq-8830-Marble-vt'); } catch { adminOnOwner = true; }
+ T('an admin cannot reset an owner', adminOnOwner);
+
+ const done = await resetMemberPassword(owner, newHire.user_id, 'Zz-5521-Lantern-kq');
+ T('the owner resets the member and their sessions are revoked',
+  typeof done.sessionsRevoked === 'number', done.sessionsRevoked);
+
+ let oldFails = false;
+ try { await loginUser({ email: 'new-hire@corp.io', password: newHirePassword, client: C }); } catch { oldFails = true; }
+ T('the old password no longer works', oldFails);
+ const relog = await loginUser({ email: 'new-hire@corp.io', password: 'Zz-5521-Lantern-kq', client: C });
+ T('the new password works', relog.kind === 'ok', relog.kind);
+ newHirePassword = 'Zz-5521-Lantern-kq';
+
+ const cleared = (await listMembers(admin)).find((m) => m.user_id === newHire.user_id);
+ T('the pending request clears after the reset', cleared?.passwordResetRequested === false);
+
+ let ownerReq = false;
+ try { await requestPasswordReset(owner); } catch { ownerReq = true; }
+ T('an owner cannot open a reset request', ownerReq);
+
+ const { canResetPassword } = await import('../../services/rbac.ts');
+ T('only an owner may reset an owner',
+  canResetPassword('owner', 'owner') && !canResetPassword('admin', 'owner'));
+ T('an admin may reset a peer admin', canResetPassword('admin', 'admin'));
+ T('nobody below admin may reset anyone',
+  !canResetPassword('manager', 'sales') && !canResetPassword('sales', 'viewer') && !canResetPassword('viewer', 'viewer'));
 }
 
 //  HTTP layer 
@@ -197,6 +261,54 @@ console.log('\n=== HTTP: the role matrix drives the create form ===');
  T('the owner is offered a non-empty set', assignable.length > 0, assignable);
  T('the set never includes owner', !assignable.includes('owner'), assignable);
  T('the payload names the ownership route', typeof body.data?.note === 'string' && body.data.note.includes('transfer-ownership'), body.data?.note);
+}
+
+//  HTTP: password reset endpoints 
+console.log('\n=== HTTP: password reset endpoints ===');
+{
+ const req = await call('/api/v1/org/members/password-reset-request', {
+  method: 'POST', headers: { authorization: `Bearer ${salesToken}` },
+ });
+ await req.arrayBuffer();
+ T('a member can POST a reset request -> 201', req.status === 201, req.status);
+
+ const anon = await call('/api/v1/org/members/password-reset-request', { method: 'POST' });
+ await anon.arrayBuffer();
+ T('an anonymous reset request -> 401', anon.status === 401, anon.status);
+
+ const forbidden = await call(`/api/v1/org/members/${owner.userId}/password`, {
+  method: 'POST', headers: { authorization: `Bearer ${salesToken}` },
+  body: JSON.stringify({ password: 'Rr-3390-Pebble-nx' }),
+ });
+ await forbidden.arrayBuffer();
+ T('a sales member cannot reset a password -> 403', forbidden.status === 403, forbidden.status);
+
+ const created = await (await call('/api/v1/org/members', {
+  method: 'POST', headers: { authorization: `Bearer ${ownerToken}` },
+  body: JSON.stringify({ email: 'resettable@corp.io', role: 'manager' }),
+ })).json() as { data?: { user?: { id?: string } } };
+ const targetId = created.data?.user?.id ?? '';
+
+ const ok = await call(`/api/v1/org/members/${targetId}/password`, {
+  method: 'POST', headers: { authorization: `Bearer ${ownerToken}` },
+  body: JSON.stringify({ password: 'Tt-6612-Cobalt-yz' }),
+ });
+ await ok.arrayBuffer();
+ T('the owner resets a member -> 200', ok.status === 200, ok.status);
+
+ const bad = await call(`/api/v1/org/members/${targetId}/password`, {
+  method: 'POST', headers: { authorization: `Bearer ${ownerToken}` },
+  body: JSON.stringify({ password: 'short' }),
+ });
+ await bad.arrayBuffer();
+ T('a weak password is refused -> 422', bad.status === 422, bad.status);
+
+ const unknown = await call('/api/v1/org/members/00000000-0000-0000-0000-000000000000/password', {
+  method: 'POST', headers: { authorization: `Bearer ${ownerToken}` },
+  body: JSON.stringify({ password: 'Tt-6612-Cobalt-yz' }),
+ });
+ await unknown.arrayBuffer();
+ T('an unknown member -> 404', unknown.status === 404, unknown.status);
 }
 
 server.close();

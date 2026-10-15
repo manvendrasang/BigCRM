@@ -36,16 +36,16 @@ PASS integration/http-mfa.test.ts 28 assertions
 PASS integration/http-routes.test.ts 31 assertions
 PASS integration/http.test.ts 100 assertions
 PASS integration/item8.test.ts 33 assertions
-PASS integration/members.test.ts 26 assertions
+PASS integration/members.test.ts 50 assertions
 PASS integration/queue.test.ts 20 assertions
 PASS integration/readOnly.test.ts 7 assertions
-PASS integration/records.test.ts 84 assertions
+PASS integration/records.test.ts 94 assertions
 PASS integration/reports.test.ts 15 assertions
 PASS integration/retention.test.ts 20 assertions
 PASS integration/savedViews.test.ts 12 assertions
 PASS security/mfa.test.ts 71 assertions
-PASS security/scenarios.test.ts 166 assertions
-TOTAL: 838 assertions passed, 0 failed across 20 suites
+PASS security/scenarios.test.ts 168 assertions
+TOTAL: 874 assertions passed, 0 failed across 20 suites
 ```
 
 ## Environment
@@ -74,10 +74,10 @@ src/tests/
  integration/calendar.test.ts 53 -- agenda, meetings, invitees, invites inbox
  integration/http.test.ts 100 -- headers/CORS/CSRF/cookies/errors over a real socket
  integration/http-mfa.test.ts 28 -- MFA enrollment and login challenge over HTTP
- integration/members.test.ts 26 -- in-house account creation, role bounds, permission gate
- integration/records.test.ts 84 -- records, tenant isolation, transactional conversion
+ integration/members.test.ts 50 -- in-house account creation, role bounds, permission gate, member-initiated password reset
+ integration/records.test.ts 94 -- records, tenant isolation, transactional conversion, viewer task scope
  integration/retention.test.ts 20 -- batched purge; audit rows never deleted
- security/scenarios.test.ts 166 -- 14 RULE 222 scenarios + supporting controls
+ security/scenarios.test.ts 168 -- 14 RULE 222 scenarios + supporting controls
 ```
 
 ## Branch coverage -- wired 2026-10-14
@@ -111,7 +111,8 @@ Notes, stated plainly:
 Owner-only invariant - owner  admin - admin cannot delete the org - role rank
 ordering - no self-promotion - no peer/superior modification - manager/admin
 invitation ceilings - last-owner protection on demote and remove - export is
-admin+ - viewer has no write permission anywhere.
+admin+ - a viewer writes nothing except the `status` of a task assigned to them,
+and holds no `reports.read`, `custom_fields.read` or `saved_views.read`.
 
 ### `integration/auth.test.ts`
 Registration atomicity - email canonicalisation - weak/common/short passwords
@@ -137,7 +138,7 @@ sessions - **reset token is single-use** - bogus token rejected identically.
 | 9 Session theft | fresh validates - revoked rejected - refresh from revoked rejected |
 | 10 Password change | two sessions exist - all revoked - old access token dead |
 | 11 Invitation abuse | **no token in response** - no token substring - preview safe - existing user cannot join without identity - victim not added - owner invitation refused - viewer invitation allowed - admin cannot invite admin or owner |
-| 12 Export abuse | viewer and sales lack export - manager lacks export - admin/owner have it - viewer cannot create imports/exports, read audit, manage users, change org settings, or delete |
+| 12 Export abuse | viewer and sales lack export - manager lacks export - admin/owner have it - viewer cannot create imports/exports, read audit, manage users, change org settings, delete, read reports/custom fields/saved views, and cannot reset a password |
 | 13 CSV injection | 7 formula payloads neutralised - quoting - plain values untouched - commas quoted - detector precision - RFC 4180 parsing - NUL rejected - unterminated quote rejected |
 | 14 Audit tampering | UPDATE rejected - DELETE rejected - count unchanged - diff keeps business fields - drops password hash, tokens, email, phone, name |
 | Supporting | signed cursors - page caps - **TOTP vs RFC 6238 vector** - password hashing properties - malformed hash handling - strength policy - log redaction - email masking - circular objects |

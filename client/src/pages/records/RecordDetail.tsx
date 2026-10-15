@@ -70,6 +70,16 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  const { confirm: confirmDelete, dialog: deleteDialog } = useConfirm();
  const { actor } = useAuth();
  const canSchedule = actor?.role !== 'viewer';
+ const isViewer = actor?.role === 'viewer';
+ // A viewer holds no `*.update` except `tasks.update`, so the Edit button is
+ // only offered where the server would accept the write: their own tasks. The
+ // task form itself is narrowed to `status` because that is the only column a
+ // viewer may change.
+ const canEdit = !isViewer || type === 'tasks';
+ const canDelete = !isViewer;
+ const editFields = (config.editFields ?? config.createFields).filter(
+ (f) => !isViewer || type !== 'tasks' || f.key === 'status',
+ );
 
  const load = useCallback(async () => {
  if (!id) return;
@@ -91,7 +101,7 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
 
  function startEdit(): void {
  const initial: Record<string, string> = {};
- for (const f of config.editFields ?? config.createFields) {
+ for (const f of editFields) {
  initial[f.key] = inputValue(record, f.key);
  }
  setForm(initial);
@@ -110,7 +120,7 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  // Number inputs arrive as strings and are converted; a non-numeric entry
  // is dropped rather than sent as NaN.
  const body: Record<string, unknown> = {};
- for (const f of config.editFields ?? config.createFields) {
+ for (const f of editFields) {
  const raw = (form[f.key] ?? '').trim();
  if (!raw) continue;
  body[f.key] = f.input === 'number' ? Number(raw) : raw;
@@ -192,13 +202,17 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  ))}
  </dl>
  <div className="form-actions">
+ {canEdit && (
  <button type="button" className="btn btn-secondary" onClick={startEdit}>
  Edit
  </button>
+ )}
+ {canDelete && (
  <button type="button" className="btn btn-secondary" onClick={() => { void handleDelete(); }}>
  Delete
  </button>
- {type === 'leads' && (
+ )}
+ {type === 'leads' && !isViewer && (
  <button type="button" className="btn btn-secondary" onClick={() => { void handleConvert(); }}>
  Convert lead
  </button>
@@ -233,7 +247,7 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  </p>
  )}
  <div className="form-grid">
- {(config.editFields ?? config.createFields).map((f) => (
+ {editFields.map((f) => (
  <label key={f.key} className="field">
  <span>
  {f.label}

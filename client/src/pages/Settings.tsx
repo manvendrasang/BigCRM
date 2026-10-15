@@ -10,7 +10,9 @@
  * use it, not wonder whether the page is broken.
  */
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ApiError } from '../lib/api';
+import { useAuth } from '../lib/auth';
 import {
  createFieldDef,
  deleteFieldDef,
@@ -21,7 +23,7 @@ import {
 } from '../lib/item8';
 import type { CustomFieldDef, ImportResult } from '../lib/item8';
 import { EmptyState, Section, useConfirm } from '../components/ui';
-import { createMember, listAssignableRoles, listMembers } from '../lib/workspace';
+import { createMember, listAssignableRoles, listMembers, resetMemberPassword } from '../lib/workspace';
 import type { CreatedMember, MemberRow } from '../lib/workspace';
 
 const ENTITY_TYPES = ['contact', 'company', 'lead', 'deal', 'task'] as const;
@@ -32,11 +34,17 @@ const FIELD_TYPES = [
 ] as const;
 
 export function Settings(): JSX.Element {
+ const { actor } = useAuth();
+ // A viewer is a strictly read-only seat: custom fields are a schema-level
+ // admin tool, and the server already refuses `custom_fields.read` to them.
+ // Hiding the section here keeps the page from advertising a capability the
+ // role deliberately does not have.
+ const isViewer = actor?.role === 'viewer';
  return (
  <div>
  <h1>Settings</h1>
  <p className="muted">Custom fields, data transfer and workspace members.</p>
- <CustomFieldsSection />
+ {!isViewer && <CustomFieldsSection />}
  <MembersSection />
  <TransfersSection />
  </div>
@@ -358,6 +366,16 @@ function MembersSection(): JSX.Element {
  const [busy, setBusy] = useState(false);
  const [created, setCreated] = useState<CreatedMember | null>(null);
 
+ // Password reset (owner/admin acts on a member's request). The card collects
+ // the new password twice; the server validates the single value it receives.
+ const [searchParams, setSearchParams] = useSearchParams();
+ const [resetTarget, setResetTarget] = useState<MemberRow | null>(null);
+ const [newPassword, setNewPassword] = useState('');
+ const [repeatPassword, setRepeatPassword] = useState('');
+ const [resetError, setResetError] = useState<string | null>(null);
+ const [resetBusy, setResetBusy] = useState(false);
+ const [resetDone, setResetDone] = useState<string | null>(null);
+
  // Least-privileged grantable role until the user picks one. The select is
  // bound to this, so an untouched form never submits an ungrantable role.
  const selectedRole = assignable.includes(role)
@@ -386,6 +404,56 @@ function MembersSection(): JSX.Element {
  useEffect(() => {
   void load();
  }, [load]);
+
+ // A password-reset notification links to `/settings?member=<id>`. Once the
+ // roster loads, open the reset card for that member if this actor may reset
+ // them, then drop the param so a refresh does not reopen it.
+ const requestedMemberId = searchParams.get('member');
+ useEffect(() => {
+  if (!requestedMemberId || members.length === 0) return;
+  const target = members.find((m) => m.userId === requestedMemberId);
+  if (target?.canResetPassword) setResetTarget(target);
+  setSearchParams({}, { replace: true });
+ }, [requestedMemberId, members, setSearchParams]);
+
+ function openReset(m: MemberRow): void {
+  setResetTarget(m);
+  setNewPassword('');
+  setRepeatPassword('');
+  setResetError(null);
+ }
+
+ function closeReset(): void {
+  setResetTarget(null);
+  setNewPassword('');
+  setRepeatPassword('');
+  setResetError(null);
+ }
+
+ async function submitReset(e: React.FormEvent): Promise<void> {
+  e.preventDefault();
+  if (!resetTarget) return;
+  if (newPassword.length === 0) {
+   setResetError('Enter a new password.');
+   return;
+  }
+  if (newPassword !== repeatPassword) {
+   setResetError('The two passwords do not match.');
+   return;
+  }
+  setResetBusy(true);
+  setResetError(null);
+  try {
+   await resetMemberPassword(resetTarget.userId, newPassword);
+   setResetDone(resetTarget.email);
+   closeReset();
+   await load();
+  } catch (err) {
+   setResetError(err instanceof ApiError ? err.message : 'Could not reset the password.');
+  } finally {
+   setResetBusy(false);
+  }
+ }
 
  async function create(e: React.FormEvent): Promise<void> {
   e.preventDefault();
@@ -441,6 +509,18 @@ function MembersSection(): JSX.Element {
     </div>
    )}
 
+   {resetDone && (
+    <div className="alert" role="status">
+     <strong>Password reset for {resetDone}</strong>
+     <p className="muted">
+      Their existing sessions were signed out. Give them the new password over a secure channel.
+     </p>
+     <button type="button" className="btn btn-secondary btn-sm" onClick={() => setResetDone(null)}>
+      Dismiss
+     </button>
+    </div>
+   )}
+
    {!forbidden && (members.length === 0 ? (
     <EmptyState message="No members yet." />
    ) : (
@@ -453,16 +533,42 @@ function MembersSection(): JSX.Element {
         <th scope="col">Role</th>
         <th scope="col">MFA</th>
         <th scope="col">Last login</th>
+        {members.some((m) => m.canResetPassword) && <th scope="col">Actions</th>}
        </tr>
       </thead>
       <tbody>
        {members.map((m) => (
         <tr key={m.userId}>
-         <td>{m.name}</td>
+         <td>
+          {m.name}
+          {m.passwordResetRequested && (
+           <>
+            {' '}
+            <span className="badge" title="This member asked the office to set a new password.">
+             Reset requested
+            </span>
+           </>
+          )}
+         </td>
          <td>{m.email}</td>
          <td>{m.role}</td>
          <td>{m.mfaEnabled ? 'On' : 'Off'}</td>
          <td>{m.lastLoginAt ? new Date(m.lastLoginAt).toLocaleString() : 'Never'}</td>
+         {members.some((x) => x.canResetPassword) && (
+          <td>
+           {m.canResetPassword ? (
+            <button
+             type="button"
+             className="btn btn-secondary btn-sm"
+             onClick={() => openReset(m)}
+            >
+             Reset password
+            </button>
+           ) : (
+            <span className="muted">--</span>
+           )}
+          </td>
+         )}
         </tr>
        ))}
       </tbody>
@@ -507,6 +613,55 @@ function MembersSection(): JSX.Element {
       </button>
      </div>
     </form>
+   )}
+
+   {resetTarget && (
+    <div className="modal-scrim" onClick={closeReset}>
+     <div
+      className="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reset-password-title"
+      onClick={(e) => e.stopPropagation()}
+     >
+      <h2 id="reset-password-title">Reset password</h2>
+      <p className="muted">
+       Set a new password for <strong>{resetTarget.email}</strong>. They will be signed out
+       everywhere and must use the new password next time.
+      </p>
+      <form onSubmit={(e) => { void submitReset(e); }}>
+       {resetError !== null && (
+        <p className="alert alert-error" role="alert">{resetError}</p>
+       )}
+       <label className="field">
+        <span>New password</span>
+        <input
+         type="password"
+         autoComplete="new-password"
+         value={newPassword}
+         onChange={(e) => setNewPassword(e.target.value)}
+        />
+       </label>
+       <label className="field">
+        <span>Repeat password</span>
+        <input
+         type="password"
+         autoComplete="new-password"
+         value={repeatPassword}
+         onChange={(e) => setRepeatPassword(e.target.value)}
+        />
+       </label>
+       <div className="form-actions modal-actions">
+        <button type="button" className="btn btn-secondary" onClick={closeReset} disabled={resetBusy}>
+         Cancel
+        </button>
+        <button type="submit" className="btn btn-primary" disabled={resetBusy}>
+         {resetBusy ? 'Saving...' : 'OK'}
+        </button>
+       </div>
+      </form>
+     </div>
+    </div>
    )}
   </Section>
  );

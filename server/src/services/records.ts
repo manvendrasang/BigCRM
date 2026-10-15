@@ -31,7 +31,7 @@ import {
  TenantScope, allowlist, insert, countScoped, direction,
  type Row, type SortDirection,
 } from '../repositories/base.ts';
-import { badRequest, conflict, notFoundOrForbidden } from '../lib/errors.ts';
+import { badRequest, conflict, forbidden, notFoundOrForbidden } from '../lib/errors.ts';
 import { sanitizeRichText, stripControlChars } from '../lib/sanitize.ts';
 import { newId } from '../lib/ids.ts';
 import { nowIso } from '../lib/time.ts';
@@ -255,7 +255,7 @@ const enumOf = <T extends string>(v: unknown, allowed: readonly T[], field: stri
  */
 type Prepared = Record<string, unknown>;
 
-function prepare(type: RecordType, input: Row): Prepared {
+function prepare(type: RecordType, input: Row, partial = false): Prepared {
  switch (type) {
  case 'contacts': {
  const out: Prepared = {
@@ -410,7 +410,12 @@ function prepare(type: RecordType, input: Row): Prepared {
  }
 
  case 'tasks': {
- const out: Prepared = { title: req(input.title, 200, 'title') };
+ const out: Prepared = {};
+ // On an update (`partial`), `title` is optional: the row already has one, and
+ // a viewer answering a task sends only `status`. Omitting it must not make
+ // `prepare` reject the whole patch.
+ const title = partial ? str(input.title, 200) : req(input.title, 200, 'title');
+ if (title) out.title = title;
  const description = str(input.description, 20_000);
  if (description) out.description = description;
  const status = enumOf(input.status,
@@ -600,6 +605,25 @@ function buildFilters(type: RecordType, filters: Row | undefined, params: unknow
 
 export type ListResult = { data: Row[]; total: number; limit: number; offset: number };
 
+/**
+ * Viewer task scope.
+ *
+ * A viewer is a read-only seat on every record EXCEPT their own work items:
+ * they may see and answer tasks assigned to them. "Their own" is a server-side
+ * predicate (`assignee_id = actor.userId`) applied to list, read and write, so
+ * a viewer cannot reach a colleague's task by id, by a list filter, or by
+ * patching the assignee to themselves. Other record types are fully visible but
+ * never writable to a viewer -- only `tasks.update` is in their permission set.
+ */
+const isViewerTaskScoped = (actor: ActorRef): boolean => actor.role === 'viewer';
+
+/** A viewer may only read a task they are the assignee of. */
+function assertViewerTaskReadable(actor: ActorRef, type: RecordType, row: Row): void {
+ if (isViewerTaskScoped(actor) && type === 'tasks' && row['assignee_id'] !== actor.userId) {
+ throw notFoundOrForbidden();
+ }
+}
+
 export async function listRecords(
  actor: ActorRef,
  type: RecordType,
@@ -639,6 +663,14 @@ export async function listRecords(
  if (query.ownerId && spec.ownerColumn) {
  params.push(query.ownerId);
  clauses.push(`${spec.ownerColumn} = $${params.length}`);
+ }
+
+ // A viewer sees only tasks assigned to them. Adding the clause here (rather
+ // than filtering the returned page) means the count uses the same predicate,
+ // so pagination totals cannot leak the existence of unseen tasks.
+ if (isViewerTaskScoped(actor) && type === 'tasks') {
+ params.push(actor.userId);
+ clauses.push(`assignee_id = $${params.length}`);
  }
 
  // `tags` has no deleted_at column; emitting the predicate against it is a
@@ -684,6 +716,7 @@ export async function getRecord(
  [actor.organizationId, id.toLowerCase()],
  );
  if (!row) throw notFoundOrForbidden();
+ assertViewerTaskReadable(actor, type, row);
  return row;
 }
 
@@ -736,7 +769,7 @@ export async function updateRecord(
  const scope = new TenantScope(actor.organizationId);
  const spec = specOf(type);
  const existing = await getRecord(actor, type, id);
- const prepared = prepare(type, input);
+ const prepared = prepare(type, input, true);
 
  // Only spec.updatable columns may change; an attempt to PATCH `organization_id`
  // is dropped rather than honoured.
@@ -745,6 +778,21 @@ export async function updateRecord(
  if (spec.updatable.includes(k)) changes[k] = v;
  }
  if (Object.keys(changes).length === 0) throw badRequest('No updatable fields were supplied.');
+
+ // A viewer may answer their own task -- and nothing else. `status` is the only
+ // client-supplied field allowed; `completed_at` is derived from it by
+ // `prepare`. Reassigning, retitling or rescheduling is refused with a 403
+ // rather than silently dropped: a partial write that reports success but
+ // changes less than asked is worse than a clear refusal. `getRecord` above has
+ // already applied the assignee read scope, so `existing` is the viewer's own
+ // task here.
+ if (isViewerTaskScoped(actor) && type === 'tasks') {
+ const allowed = new Set(['status', 'completed_at']);
+ const offending = Object.keys(changes).filter((k) => !allowed.has(k));
+ if (offending.length > 0) {
+ throw forbidden('You can only change the status of a task assigned to you.');
+ }
+ }
 
  // Keep the dedup key in step with the display value.
  if (type === 'companies' && changes.name) changes.name_normalized = normaliseCompanyName(changes.name);

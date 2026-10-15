@@ -389,8 +389,10 @@ S(12, 'Export Abuse -- a viewer must not export');
  const { can } = await import('../../services/rbac.ts');
  T('S12', 'viewer lacks reports.export', !can('viewer', 'reports.export'));
  T('S12', 'viewer lacks exports.create', !can('viewer', 'exports.create'));
- T('S12', 'viewer may read but not write reports',
- can('viewer', 'reports.read') && !can('viewer', 'reports.update'));
+ T('S12', 'viewer cannot read reports or earnings', !can('viewer', 'reports.read'));
+ T('S12', 'viewer cannot read custom fields or saved views',
+ !can('viewer', 'custom_fields.read') && !can('viewer', 'saved_views.read'));
+ T('S12', 'sales and above can read reports', can('sales', 'reports.read') && can('manager', 'reports.read'));
  // Export is a bulk-PII capability, so it is deliberately admin+ only. A sales
  // rep with export could exfiltrate the whole customer list in one call.
  T('S12', 'sales also lacks reports.export (bulk PII is admin+)', !can('sales', 'reports.export'));

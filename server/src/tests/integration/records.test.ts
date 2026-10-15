@@ -274,6 +274,45 @@ T('the viewer actor reads the same tenant', viewerAcme.organizationId === acme.o
 const viewerOther = await attempt(() => getRecord({ ...viewerAcme, organizationId: globex.organizationId }, 'contacts', String(ava.record.id)));
 T('a viewer from another tenant still cannot read it', !viewerOther.ok, viewerOther);
 
+console.log('\n=== viewer role: only their own tasks, and only the status ===');
+{
+ // One task assigned to the viewer (same user id as the owner here) and one
+ // assigned to somebody else. The viewer must reach the first and not the
+ // second -- by list, by id, or by a PATCH that names the other's id.
+ const mine = await createRecord(acme, 'tasks', {
+  title: 'Viewer own task', status: 'todo', assignee_id: acme.userId,
+ });
+ const theirs = await createRecord(acme, 'tasks', {
+  title: 'Someone else task', status: 'todo', assignee_id: globex.userId,
+ });
+
+ const list = await listRecords(viewerAcme, 'tasks');
+ T('a viewer lists only their own tasks',
+  list.total === 1 && String(list.data[0]?.['id']) === String(mine.record.id), list.data.map((r) => r.id));
+ T('the count matches the scoped page', list.total === 1, list.total);
+
+ const own = await attempt(() => getRecord(viewerAcme, 'tasks', String(mine.record.id)));
+ T('a viewer can read their own task', own.ok, own);
+
+ const other = await attempt(() => getRecord(viewerAcme, 'tasks', String(theirs.record.id)));
+ T('a viewer cannot read a task assigned to somebody else', !other.ok, other);
+
+ const answer = await attempt(() => updateRecord(viewerAcme, 'tasks', String(mine.record.id), { status: 'completed' }));
+ T('a viewer can complete their own task', answer.ok, answer);
+ T('the status change is applied', answer.ok && answer.v.record.status === 'completed', answer.ok && answer.v.record.status);
+ T('and stamps completed_at', answer.ok && Boolean(answer.v.record.completed_at));
+
+ const retitle = await attempt(() => updateRecord(viewerAcme, 'tasks', String(mine.record.id), { title: 'Renamed by viewer' }));
+ T('a viewer cannot change any other field', !retitle.ok, retitle);
+
+ const stranger = await attempt(() => updateRecord(viewerAcme, 'tasks', String(theirs.record.id), { status: 'completed' }));
+ T("a viewer cannot update somebody else's task", !stranger.ok, stranger);
+
+ const ownerUpdates = await attempt(() => updateRecord(acme, 'tasks', String(theirs.record.id), { status: 'in_progress' }));
+ T('a non-viewer still updates any task', ownerUpdates.ok, ownerUpdates);
+}
+
+
 console.log('\n=== regression: a rejected optional write must not roll back the business write ===');
 // This is the shape of the bug that produced "created, but not in the table".
 // A failing audit/activity statement aborts a PostgreSQL transaction outright;

@@ -31,7 +31,7 @@ import { persistableIp } from '../lib/ip.ts';
 import { revokeUserSessions } from './auth.ts';
 import type { PublicUser } from './auth.ts';
 import {
- assignableRoles, can, canAssignRole, canRemoveMember, isRole, wouldOrphanOwners,
+ assignableRoles, can, canAssignRole, canRemoveMember, canResetPassword, isRole, wouldOrphanOwners,
  type Role,
 } from './rbac.ts';
 
@@ -89,18 +89,42 @@ export type MemberRow = {
  last_login_at: string | null; locked_until: string | null;
 };
 
-export async function listMembers(actor: ActorRef): Promise<MemberRow[]> {
+/**
+ * A roster row plus the two derived facts the Members UI needs and must not
+ * compute for itself:
+ *
+ * * `canResetPassword` -- whether THIS actor may set this member's password.
+ *   The server decides (rank + owner ceiling); the client only renders.
+ * * `passwordResetRequested` -- whether the member has an open request, so the
+ *   row can be badged.
+ */
+export type MemberListRow = MemberRow & {
+ canResetPassword: boolean;
+ passwordResetRequested: boolean;
+};
+
+export async function listMembers(actor: ActorRef): Promise<MemberListRow[]> {
  const db = await initDriver();
- const r = await db.query<MemberRow>(
+ const r = await db.query<MemberRow & { reset_requested_at: string | null }>(
  `SELECT m.user_id, u.email, u.name, m.role, m.status, m.joined_at, m.created_at,
- u.mfa_enabled, u.email_verified_at, u.last_login_at, u.locked_until
+ u.mfa_enabled, u.email_verified_at, u.last_login_at, u.locked_until,
+ (SELECT pr.requested_at FROM password_reset_requests pr
+  WHERE pr.organization_id = m.organization_id AND pr.user_id = m.user_id
+  AND pr.status = 'pending' LIMIT 1) AS reset_requested_at
  FROM organization_members m
  JOIN users u ON u.id = m.user_id
  WHERE m.organization_id = $1 AND u.deleted_at IS NULL
  ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'manager' THEN 2
  WHEN 'sales' THEN 3 ELSE 4 END, m.created_at`,
  [actor.organizationId]);
- return r.rows;
+ return r.rows.map((row) => {
+ const { reset_requested_at, ...rest } = row;
+ return {
+  ...rest,
+  canResetPassword: canResetPassword(actor.role, row.role),
+  passwordResetRequested: reset_requested_at !== null,
+ };
+ });
 }
 
 /**
@@ -245,6 +269,171 @@ export async function changeMemberRole(
  target: targetUserId, from: current, to: nextRole, sessionsRevoked: revoked,
  });
  return { role: nextRole, sessionsRevoked: revoked };
+}
+
+//  password reset (member requests; owner/admin completes) 
+
+/**
+ * A member asks the office to set a new password.
+ *
+ * There is no self-service reset mail a member can rely on here, so the flow is
+ * deliberately human: the member -- already signed in, since the request button
+ * lives on the dashboard -- asks, every owner and admin is notified, and one of
+ * them types a new password by hand. The request is a row rather than an
+ * inferred state so it can be de-duplicated (one open request per member) and
+ * marked resolved when handled.
+ *
+ * Two preconditions, both enforced here rather than only in the UI:
+ * 1. The account must have logged in at least once (`last_login_at`). A brand
+ *    new account still holds the credentials handed over at creation; it has
+ *    not "activated" the request path. The caller is authenticated so this is
+ *    normally already true -- the check documents the rule and refuses a
+ *    crafted request for a never-used account.
+ * 2. An owner may not request: nobody but an owner can reset an owner, so the
+ *    request could never be completed by an admin anyway.
+ *
+ * Repeating the request while one is open is idempotent: the same request row
+ * is returned and no further notifications are sent.
+ */
+export async function requestPasswordReset(
+ actor: ActorRef,
+): Promise<{ requestId: string; requestedAt: string; notified: number }> {
+ const db = await initDriver();
+
+ const me = await db.query<{ last_login_at: string | null }>(
+ 'SELECT last_login_at FROM users WHERE id = $1 AND deleted_at IS NULL', [actor.userId]);
+ if (!me.rows[0]) throw notFound('Account not found.');
+ if (!me.rows[0].last_login_at) {
+ throw conflict('Sign in once before requesting a password reset.');
+ }
+ if (actor.role === 'owner') {
+ throw badRequest('Owners change their own password from account settings.');
+ }
+
+ const open = await db.query<{ id: string; requested_at: string }>(
+ `SELECT id, requested_at FROM password_reset_requests
+  WHERE organization_id = $1 AND user_id = $2 AND status = 'pending'`,
+ [actor.organizationId, actor.userId]);
+ if (open.rows[0]) {
+ return { requestId: open.rows[0].id, requestedAt: open.rows[0].requested_at, notified: 0 };
+ }
+
+ const now = nowIso();
+ const requestId = newId();
+ await db.query(
+ `INSERT INTO password_reset_requests (id, organization_id, user_id, status, requested_at)
+  VALUES ($1,$2,$3,'pending',$4)`,
+ [requestId, actor.organizationId, actor.userId, now]);
+
+ // Notify the people who can actually fulfil it: every owner and admin in this
+ // organization except the requester (an admin asking should not notify self).
+ const staff = await db.query<{ user_id: string }>(
+ `SELECT user_id FROM organization_members
+  WHERE organization_id = $1 AND role IN ('owner','admin') AND user_id <> $2`,
+ [actor.organizationId, actor.userId]);
+
+ const { createNotification } = await import('./activity.ts');
+ let notified = 0;
+ for (const row of staff.rows) {
+ await createNotification(
+ { organizationId: actor.organizationId },
+ {
+ userId: row.user_id,
+ type: 'password_reset_request',
+ title: `Password reset requested by ${actor.email}`,
+ body: 'Open Settings > Members to set a new password for this member.',
+ link: `/settings?member=${actor.userId}`,
+ entityType: 'user',
+ entityId: actor.userId,
+ },
+ );
+ notified++;
+ }
+
+ await writeAudit(db, {
+ organizationId: actor.organizationId, actorId: actor.userId, actorRole: actor.role,
+ action: 'member.password_reset_requested', entityType: 'user', entityId: actor.userId,
+ metadata: { notified },
+ });
+ securityLog('member.password_reset_requested', {
+ organizationId: actor.organizationId, userId: actor.userId, notified,
+ });
+ return { requestId, requestedAt: now, notified };
+}
+
+/**
+ * An owner or admin sets a member's password directly.
+ *
+ * The password is TYPED by the human handling the request (no generated secret
+ * is returned), so it goes through the same strength policy as any other
+ * password change. Authority is `canResetPassword`: an owner may reset anyone
+ * including an owner; an admin may reset anyone except an owner.
+ *
+ * On success:
+ * * every session the member holds is revoked -- a password a second person
+ *   knows must not leave existing sessions alive;
+ * * any open reset request is closed (status `completed`, who and when);
+ * * the change is written to the audit log and the security-event log.
+ *
+ * The audit row carries the email and role of the target but never the
+ * password or its hash.
+ */
+export async function resetMemberPassword(
+ actor: ActorRef,
+ targetUserId: string,
+ newPassword: string,
+): Promise<{ userId: string; sessionsRevoked: number }> {
+ const db = await initDriver();
+
+ const targetRoleValue = await memberRole(db, actor.organizationId, targetUserId);
+ if (targetRoleValue === null) throw notFound('That user is not a member of this organization.');
+ if (!canResetPassword(actor.role, targetRoleValue)) {
+ securityLog('permission.denied', {
+ userId: actor.userId, organizationId: actor.organizationId,
+ reason: 'password_reset_hierarchy', targetRole: targetRoleValue, actorRole: actor.role,
+ });
+ throw forbidden("You cannot reset that member's password.");
+ }
+
+ const target = await db.query<{ email: string; name: string; password_hash: string }>(
+ 'SELECT email, name, password_hash FROM users WHERE id = $1 AND deleted_at IS NULL', [targetUserId]);
+ const targetUser = target.rows[0];
+ if (!targetUser) throw notFound('Account not found.');
+
+ const issues = checkPasswordStrength(newPassword, { email: targetUser.email, name: targetUser.name });
+ if (issues.length) throw validationFailed({ password: issues.map((i) => i.message).join(' ') });
+
+ const { verifyPassword } = await import('../lib/password.ts');
+ if (await verifyPassword(newPassword, targetUser.password_hash)) {
+ throw validationFailed({ password: 'The new password must differ from the current one.' });
+ }
+
+ const hash = await hashPassword(newPassword);
+ const now = nowIso();
+ await db.transaction(async (tx) => {
+ await tx.query(
+ `UPDATE users SET password_hash = $1, password_changed_at = $2, updated_at = $2,
+  failed_login_count = 0, locked_until = NULL WHERE id = $3`,
+ [hash, now, targetUserId]);
+ await tx.query(
+ `UPDATE password_reset_requests SET status = 'completed', resolved_at = $1, resolved_by = $2
+  WHERE organization_id = $3 AND user_id = $4 AND status = 'pending'`,
+ [now, actor.userId, actor.organizationId, targetUserId]);
+ await writeAudit(tx, {
+ organizationId: actor.organizationId, actorId: actor.userId, actorRole: actor.role,
+ action: 'member.password_reset', entityType: 'user', entityId: targetUserId,
+ after: { email: targetUser.email, role: targetRoleValue },
+ });
+ });
+
+ // Outside the transaction, like every other session revocation: the password
+ // change is the durable fact; killing sessions is best-effort follow-up.
+ const sessionsRevoked = await revokeUserSessions(targetUserId, 'password_reset_by_admin');
+ securityLog('member.password_reset', {
+ organizationId: actor.organizationId, userId: actor.userId,
+ target: targetUserId, targetRole: targetRoleValue, sessionsRevoked,
+ });
+ return { userId: targetUserId, sessionsRevoked };
 }
 
 /**

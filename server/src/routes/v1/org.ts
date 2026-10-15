@@ -14,6 +14,7 @@ import {
  createMember,
  inviteMember, acceptInvite, previewInvite, revokeInvitation, listInvitations,
  listTeams, createTeam, transferOwnership, assignableRoles,
+ requestPasswordReset, resetMemberPassword,
 } from '../../services/org.ts';
 import { sendInvitationEmail } from '../../integrations/email.ts';
 import { validationFailed } from '../../lib/errors.ts';
@@ -144,6 +145,36 @@ orgRouter.delete('/members/:id', csrfGuard, requirePermission('users.remove'),
  sensitiveActionWindow, asyncRoute(async (req, res) => {
  res.json({ data: await removeMember(actorRef(req), String(req.params.id ?? '')) });
  }));
+
+//  password reset (member requests; owner/admin completes) 
+
+/**
+ * The member asks. No permission gate beyond being an authenticated member of
+ * the organization: the request is the member acting on their own account, and
+ * the service refuses an owner (an owner can only be reset by an owner). While
+ * a request is open, repeating it is idempotent.
+ */
+orgRouter.post('/members/password-reset-request', csrfGuard, asyncRoute(async (req, res) => {
+ res.status(201).json({ data: await requestPasswordReset(actorRef(req)) });
+}));
+
+const memberPasswordSchema = z.object({
+ password: z.string().min(1).max(1024),
+});
+
+/**
+ * The owner/admin completes it. The password is supplied by the caller (the
+ * "repeat password" field is a client concern; the server validates one value
+ * against the strength policy), never generated and echoed, and never written
+ * to a log. Authority is `users.reset_password` PLUS the owner rule enforced in
+ * the service: an admin cannot reset an owner.
+ */
+orgRouter.post('/members/:id/password', csrfGuard, requirePermission('users.reset_password'),
+ sensitiveActionWindow, asyncRoute(async (req, res) => {
+ const parsed = memberPasswordSchema.safeParse(req.body);
+ if (!parsed.success) throw validationFailed(fieldErrors(parsed.error));
+ res.json({ data: await resetMemberPassword(actorRef(req), String(req.params.id ?? ''), parsed.data.password) });
+}));
 
 //  invitations 
 
