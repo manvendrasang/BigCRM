@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": [
+      "ES2023"
+    ],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": false,
+    "verbatimModuleSyntax": false,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src/**/*.ts",
+    // The dataset seeder is dev/ops tooling, not shipped code. Typechecking it
+    // costs nothing and means `infra/scripts/backup-restore-drill.sh` cannot
+    // silently rot against schema changes. `tsconfig.build.json` restates
+    // `include` as `src/**` only, so it is deliberately NOT compiled into dist.
+    "seed/**/*.ts"
+  ],
+  "exclude": [
+    "src/integrations/mongodb.ts",
+    "src/tests/unit/mongodb.test.ts"
+  ]
+}

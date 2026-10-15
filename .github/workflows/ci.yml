@@ -1,0 +1,211 @@
+name: ci
+
+# RULE 93 pipeline: lint -> typecheck -> test -> security -> scan -> build.
+# Every stage that can report a result must actually run it (RULE 5).
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ── RULE 94/57: static analysis and secret detection before anything else ────
+  security-static:
+    name: SAST + secret scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-node@v4
+        with: { node-version: ${{ env.NODE_VERSION }} }
+
+      # RULE 57: scan the full history, not just the tip.
+      - name: Secret scan (gitleaks, full history)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
+
+      # RULE 94: SAST over the server sources.
+      - name: SAST (Semgrep, security rules)
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/typescript
+          SARIF_OUTPUT: semgrep.sarif
+          SARIF_UPLOAD_ARTIFACT: 'true'
+
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Dependency audit (dev, advisory only)
+        run: npm audit --audit-level=critical || true
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with: { sarif_file: semgrep.sarif }
+
+  # ── correctness ─────────────────────────────────────────────────────────────
+  verify:
+    name: typecheck + tests
+    runs-on: ubuntu-latest
+    services:
+      # RULE 68: a real PostgreSQL, not an in-process emulator, so the schema and
+      # the queries are exercised as they will be in production.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: bigcrm
+          POSTGRES_PASSWORD: bigcrm_ci_password
+          POSTGRES_DB: bigcrm_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U bigcrm"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: ${{ env.NODE_VERSION }}, cache: npm }
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # RULE 187: dependency testing, run every build.
+      - name: Dependency scan
+        run: npm audit --omit=dev --audit-level=high
+
+      # RULE 180/181/183. Runs the real schema against real PostgreSQL.
+      - name: Tests (real PostgreSQL)
+        env:
+          NODE_ENV: test
+          ENV_NAME: ci
+          LOG_LEVEL: silent
+          DATABASE_URL: postgres://bigcrm:bigcrm_ci_password@localhost:5432/bigcrm_test
+          JWT_ISSUER: bigcrm.ci
+          JWT_AUDIENCE: bigcrm.ci.api
+          JWT_ACCESS_SECRET: ci-access-secret-0123456789abcdef0123456789
+          JWT_REFRESH_SECRET: ci-refresh-secret-0123456789abcdef0123456789
+          SECRETS_PEPPER: ci-pepper-0123456789abcdef0123456789abcdef
+          STORAGE_SIGNING_SECRET: ci-storage-secret-0123456789abcdef012
+          APP_ORIGINS: http://localhost:3000
+        run: node --experimental-strip-types --no-warnings server/src/tests/run.ts
+
+      - name: Migrations apply cleanly and are idempotent
+        env:
+          NODE_ENV: test
+          LOG_LEVEL: silent
+          DATABASE_URL: postgres://bigcrm:bigcrm_ci_password@localhost:5432/bigcrm_test
+          JWT_ISSUER: bigcrm.ci
+          JWT_AUDIENCE: bigcrm.ci.api
+          JWT_ACCESS_SECRET: ci-access-secret-0123456789abcdef0123456789
+          JWT_REFRESH_SECRET: ci-refresh-secret-0123456789abcdef0123456789
+          SECRETS_PEPPER: ci-pepper-0123456789abcdef0123456789abcdef
+          STORAGE_SIGNING_SECRET: ci-storage-secret-0123456789abcdef012
+          APP_ORIGINS: http://localhost:3000
+        run: |
+          node --experimental-strip-types server/src/db/cli.ts up
+          node --experimental-strip-types server/src/db/cli.ts status
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-output
+          path: |
+            npm-debug.log*
+            server/logs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ── RULE 89/90: container build and image scan ─────────────────────────────
+  container:
+    name: build + scan image
+    runs-on: ubuntu-latest
+    needs: [verify]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: bigcrm:ci
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+
+      # RULE 90: scan for OS vulns, dependency vulns and secrets.
+      - name: Image scan (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: bigcrm:ci
+          format: sarif
+          output: trivy.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Fail on Critical/High image findings
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: bigcrm:ci
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: trivy.sarif }
+
+  # ── RULE 95: DAST against a running instance ───────────────────────────────
+  # Disabled until the route layer exists; the API currently has no HTTP surface.
+  # See docs/PROJECT_STATUS.md §3.
+  dast:
+    name: DAST
+    runs-on: ubuntu-latest
+    needs: [verify]
+    if: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline-scan@0.10.0
+        with:
+          target: http://localhost:3000
+          config_file: .zaprc
+
+  # ── RULE 203: infrastructure-as-code scanning ───────────────────────────────
+  iac:
+    name: IaC scan
+    runs-on: ubuntu-latest
+    if: hashFiles('infra/terraform/**/*.tf') != ''
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infra/terraform
+          framework: terraform
+          check: CKV_AWS_18,CKV_AWS_19,CKV_AWS_20,CKV_AWS_21,CKV_AWS_3,CKV_AWS_16
+          # The six checks above are the ones that matter most here:
+          #   S3 bucket ACL / public ACL / public read / public write /
+          #   unrestricted bucket policy / missing Block Public Access.
+          soft_fail: false

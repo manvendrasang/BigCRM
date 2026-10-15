@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Locked-down CSP. `default-src 'self'` means no third-party script, style or
+      connection is ever permitted, so an injected <script> or exfiltration
+      endpoint has nowhere to run or send data. `frame-ancestors 'none'` blocks
+      clickjacking; `base-uri 'self'` blocks <base> hijacking of relative script
+      URLs. 'unsafe-inline' is required for style-src only because Vite injects
+      stylesheets — note it is never granted to script-src.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex, nofollow" />
+    <!--
+      Applies the stored theme before first paint (no flash of the wrong theme).
+      An external file, not an inline script: `script-src 'self'` forbids inline
+      and that policy must not be relaxed for a theming feature.
+    -->
+    <script src="/theme-init.js"></script>
+    <title>BigCRM</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

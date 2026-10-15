@@ -1,0 +1,1209 @@
+/* ============================================================================
+   BigCRM component styles
+
+   Every value here is a token from `tokens.css`, which `main.tsx` imports first
+   so the token layer is always defined before these rules are parsed. Nothing in
+   this file hard-codes a colour, so a theme change repaints the whole
+   application without touching a single component.
+
+   Selectors are kept stable: components depend on these class names, and
+   renaming them would be churn with no visual benefit.
+   ========================================================================== */
+
+/* ── utilities ───────────────────────────────────────────────────────────── */
+
+/* Available to assistive tech, invisible on screen. Used for labels that must
+   not be read twice (a visible label plus a select's own name). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link: first tab stop, visible only when focused. */
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: -100px;
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-4);
+  background: var(--primary);
+  color: var(--primary-fg);
+  border-radius: var(--radius-sm);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+  transition: top var(--dur-fast) var(--ease-out);
+}
+.skip-link:focus {
+  top: var(--space-3);
+}
+
+/* ── auth pages ───────────────────────────────────────────────────────────── */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-8);
+}
+
+.auth-page .card {
+  width: 100%;
+  max-width: 420px;
+}
+
+.card h1 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.card h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.card-subtitle {
+  margin: 0 0 var(--space-6);
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+}
+
+.card-footer {
+  margin: var(--space-6) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* ── forms ───────────────────────────────────────────────────────────────── */
+
+.field {
+  margin-bottom: var(--space-4);
+}
+
+.field label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  transition: border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.field input:hover:not(:disabled),
+.field select:hover:not(:disabled),
+.field textarea:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--surface-sunken);
+}
+
+.field input[aria-invalid='true'],
+.field select[aria-invalid='true'] {
+  border-color: var(--danger-fg);
+}
+
+.field-error {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--danger-fg);
+}
+
+.alert {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-base);
+}
+
+.alert-error {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+  border-color: var(--danger-border);
+}
+
+/* ── buttons ─────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  /* Only transform/opacity/colour animate — never layout properties. */
+  transition: background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-fg);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--primary-active);
+}
+
+.btn-secondary {
+  width: auto;
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--muted);
+}
+
+/* ── app shell ───────────────────────────────────────────────────────────── */
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: var(--header-height);
+  padding: var(--space-3) var(--space-6);
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--primary-fg);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-md);
+}
+
+.brand-name {
+  margin: 0;
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+}
+
+.brand-org {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.user-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.user-email {
+  font-size: var(--text-sm);
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-role {
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+/* ── theme switcher ──────────────────────────────────────────────────────── */
+
+.theme-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--control-height);
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-secondary);
+  transition: border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.theme-switcher:hover {
+  border-color: var(--muted);
+  background: var(--surface-hover);
+}
+
+.theme-switcher-glyph {
+  font-size: var(--text-md);
+  line-height: 1;
+}
+
+.theme-switcher-select {
+  height: 100%;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.theme-switcher-select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
+}
+
+/* Native dropdown options inherit the page text colour but not the page
+   background in every browser, so an explicit pair keeps the popup readable
+   in both themes even where `color-scheme` is ignored. */
+option {
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+/* ── app content ─────────────────────────────────────────────────────────── */
+
+.app-main {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-6);
+}
+
+.app-main h1 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-4);
+  margin: var(--space-6) 0;
+}
+
+.stat-value {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  /* Tabular figures stop numbers jittering as they update. */
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-note {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.route-status {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  color: var(--text-secondary);
+}
+
+a {
+  color: var(--primary);
+  text-underline-offset: 2px;
+}
+
+/* ── navigation ──────────────────────────────────────────────────────────── */
+
+.app-nav {
+  position: sticky;
+  top: var(--header-height);
+  z-index: var(--z-sticky);
+  display: flex;
+  gap: var(--space-1);
+  padding: 0 var(--space-6);
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.app-nav a {
+  padding: var(--space-3) var(--space-3);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.app-nav a:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.app-nav a.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ── toolbars and data tables ────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin: var(--space-5) 0;
+  flex-wrap: wrap;
+}
+
+.toolbar .search {
+  flex: 1;
+  min-width: 200px;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  font: inherit;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.toolbar .search:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+table.records {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
+
+table.records th,
+table.records td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+table.records th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  background: var(--surface-sunken);
+}
+
+table.records tbody tr:last-child td {
+  border-bottom: none;
+}
+
+table.records tbody tr {
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+table.records tbody tr:hover {
+  background: var(--hover);
+}
+
+table.records td a {
+  font-weight: var(--weight-medium);
+}
+
+.pager {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-3);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+.pager .btn-secondary {
+  width: auto;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  min-height: 32px;
+}
+
+/* ── detail and form layouts ─────────────────────────────────────────────── */
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4) var(--space-6);
+  margin: var(--space-5) 0;
+}
+
+.detail-grid dt {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-secondary);
+}
+
+.detail-grid dd {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-md);
+  /* Long customer and company names must wrap, not clip. */
+  overflow-wrap: anywhere;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+  margin: var(--space-5) 0;
+}
+
+.form-grid .field {
+  margin: 0;
+}
+
+.form-grid input,
+.form-grid select,
+.form-grid textarea {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  font: inherit;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.form-grid input:focus-visible,
+.form-grid select:focus-visible,
+.form-grid textarea:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.form-actions .btn {
+  width: auto;
+}
+
+/* ── responsive ──────────────────────────────────────────────────────────── */
+
+/* Below the tablet breakpoint the header stacks and the user chip stops
+   competing with the brand for horizontal room. */
+@media (max-width: 640px) {
+  .app-header {
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .app-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .user-chip {
+    align-items: flex-start;
+    order: -1;
+  }
+
+  .app-nav {
+    padding: 0 var(--space-4);
+  }
+
+  .app-main {
+    padding: var(--space-4);
+  }
+
+  .card {
+    padding: var(--space-6);
+  }
+
+  .auth-page {
+    padding: var(--space-4);
+  }
+
+  /* Sticky headers eat a lot of a short viewport; let them scroll away. */
+  table.records th {
+    position: static;
+  }
+}
+
+@media (max-width: 420px) {
+  .user-email {
+    max-width: 14ch;
+  }
+}
+
+/* ── shared UI primitives (components/ui.tsx) ──────────────────────────────
+   One class per pattern so pages compose instead of inventing inline styles.
+   Every value below is a token; dark theme and reduced motion inherit. */
+
+.btn-sm {
+  width: auto;
+  min-height: 30px;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.btn-auto {
+  width: auto;
+}
+
+.btn-danger {
+  background: var(--danger-strong);
+  color: var(--danger-strong-fg);
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+/* Row-level action clusters inside table cells. */
+.btn-group {
+  display: inline-flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Inline filter/search forms inside a toolbar. */
+.form-row {
+  display: flex;
+  gap: var(--space-2);
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+/* KPI cards that are also links keep card text colours, not link purple. */
+.link-card {
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.link-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
+
+/* Titled card sections with one standard rhythm. */
+.card.section {
+  margin: var(--space-6) 0;
+}
+
+.section-title {
+  margin: 0 0 var(--space-4);
+}
+
+.subsection-title {
+  margin: var(--space-4) 0 var(--space-3);
+  font-size: var(--text-md);
+}
+
+.report-group {
+  margin-top: var(--space-4);
+}
+
+.report-group > h3 {
+  margin: var(--space-2) 0;
+  font-size: var(--text-md);
+}
+
+.empty-state {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.empty-state p {
+  margin: 0;
+}
+
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-fg);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  vertical-align: baseline;
+}
+
+/* ── modal dialog ────────────────────────────────────────────────────────── */
+
+.modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--scrim);
+  animation: modal-fade var(--dur-base) var(--ease-out);
+}
+
+.modal {
+  width: 100%;
+  max-width: 26rem;
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: modal-rise var(--dur-base) var(--ease-out);
+}
+
+.modal h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.modal-actions {
+  margin-top: var(--space-6);
+  justify-content: flex-end;
+}
+
+@keyframes modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── activity timeline ───────────────────────────────────────────────────── */
+
+.timeline {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+}
+
+.timeline-item {
+  position: relative;
+  margin: 0;
+  padding: 0 0 var(--space-4) var(--space-5);
+  border-left: 2px solid var(--border-strong);
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.timeline-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.timeline-type {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+}
+
+.timeline-subject {
+  margin: var(--space-1) 0 0;
+}
+
+.timeline-item .muted {
+  margin: var(--space-1) 0 0;
+}
+
+/* ── small utilities ─────────────────────────────────────────────────────── */
+
+.break-all {
+  word-break: break-all;
+}
+
+.secret-code {
+  display: block;
+  margin-top: var(--space-2);
+  word-break: break-all;
+}
+
+.secret-actions {
+  margin-top: var(--space-2);
+}
+
+.checklist {
+  border: none;
+  padding: 0;
+  margin: var(--space-3) 0;
+}
+
+.checklist legend {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  margin-bottom: var(--space-2);
+}
+
+.checklist label {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+/* ── calendar ────────────────────────────────────────────────────────────── */
+table.calendar-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
+
+table.calendar-grid th,
+table.calendar-grid td {
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+table.calendar-grid th {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  background: var(--surface-sunken);
+}
+
+table.calendar-grid tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.cal-day {
+  min-width: 7.5rem;
+  padding: var(--space-2);
+}
+
+.cal-filler {
+  opacity: 0.55;
+}
+
+.cal-selected {
+  background: var(--primary-subtle);
+}
+
+.cal-date {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0 var(--space-1);
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.cal-date:hover {
+  border-color: var(--border-strong);
+}
+
+.cal-selected .cal-date {
+  background: var(--primary);
+  color: var(--primary-fg);
+}
+
+.cal-chips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.cal-chip {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius);
+  font-size: var(--text-xs);
+}
+
+.cal-chip-meeting {
+  background: var(--primary-subtle);
+  color: var(--primary-subtle-fg);
+}
+
+.cal-chip-task {
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+}
+
+.cal-chip-done {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.cal-chip-overdue {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+  font-weight: var(--weight-semibold);
+}
+
+.cal-more {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.cal-kind {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ── kanban board ────────────────────────────────────────────────────────── */
+.board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(16rem, 1fr);
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-4);
+}
+
+.board-column {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  min-height: 12rem;
+  transition: border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.board-column > h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-md);
+}
+
+.board-drop {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+.board-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.board-card {
+  padding: var(--space-3) var(--space-4);
+}
+
+.board-card[draggable='true'] {
+  cursor: grab;
+}
+
+.board-card .stat-value {
+  font-size: var(--text-lg);
+}
+
+.board-card .muted {
+  margin: var(--space-1) 0 0;
+}
+
+.board-move {
+  display: block;
+  margin-top: var(--space-2);
+}
+
+.board-move select {
+  max-width: 100%;
+  margin-top: var(--space-1);
+  min-height: var(--control-height);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+/* ── project pipeline stepper ────────────────────────────────────────────── */
+
+.stepper {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.step {
+  flex: 1 1 8rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.step-done {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+  color: var(--success-fg);
+}
+
+.step-current {
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+  color: var(--primary-subtle-fg);
+  font-weight: var(--weight-semibold);
+}
+
+.step-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.step-button:disabled {
+  cursor: wait;
+  text-decoration: none;
+}
+
+/* ── mobile navigation drawer ────────────────────────────────────────────── */
+.nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  min-height: var(--control-height);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-lg);
+  cursor: pointer;
+}
+
+.nav-scrim {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .nav-toggle {
+    display: inline-flex;
+  }
+
+  /* The sticky top bar becomes an off-canvas drawer. Above this breakpoint
+     the data-open attribute is inert and rendering is unchanged. */
+  .app-nav {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--z-nav);
+    width: min(18rem, 84vw);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: var(--space-4) var(--space-3);
+    overflow-y: auto;
+    transform: translateX(-105%);
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+
+  .app-nav[data-open='true'] {
+    transform: none;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .app-nav a {
+    border-bottom: none;
+    border-left: 3px solid transparent;
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-3);
+  }
+
+  .app-nav a.active {
+    border-left-color: var(--primary);
+    background: var(--primary-subtle);
+  }
+
+  .nav-scrim[data-open='true'] {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    background: var(--scrim);
+  }
+}

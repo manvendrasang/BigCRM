@@ -1,0 +1,331 @@
+/* ============================================================================
+   BigCRM design tokens
+   ----------------------------------------------------------------------------
+   The single source of truth for colour, type, space, radius, elevation,
+   motion and z-index. Every other stylesheet consumes these and never hard-codes
+   a hex value.
+
+   Theme selection is driven by `data-theme` on <html>:
+     data-theme="light" | "dark"  -> explicit user choice
+     (absent)                     -> follow the OS via prefers-color-scheme
+   `theme-init.js` runs synchronously in <head> so the correct theme is applied
+   before first paint (no flash).
+
+   CSP: `script-src 'self'` forbids inline scripts, which is why the pre-paint
+   bootstrap is a separate file rather than a <script> block.
+   ========================================================================== */
+
+:root {
+  /* ── type ──────────────────────────────────────────────────────────────────
+     System fonts only. `default-src 'self'` means no webfont may be fetched
+     from a third party, and a self-hosted face would block first paint. */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+    'Apple Color Emoji', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  --leading-tight: 1.25;
+  --leading-snug: 1.4;
+  --leading-normal: 1.55;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-wide: 0.04em;
+  --tracking-tight: -0.01em;
+
+  /* ── space (4px base) ─────────────────────────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* ── radius ───────────────────────────────────────────────────────────── */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  /* ── layout ───────────────────────────────────────────────────────────── */
+  --content-width: 1200px;
+  --reading-width: 72ch;
+  --header-height: 60px;
+  --control-height: 38px;
+
+  /* ── motion ───────────────────────────────────────────────────────────── */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 260ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ── z-index layers ───────────────────────────────────────────────────── */
+  --z-base: 0;
+  --z-sticky: 100;
+  --z-nav: 200;
+  --z-dropdown: 300;
+  --z-overlay: 400;
+  --z-modal: 500;
+  --z-toast: 600;
+
+  /* ── semantic colour: LIGHT ───────────────────────────────────────────── */
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f1f3f7;
+  --surface-hover: #f1f3f7;
+  --surface-selected: #eef2ff;
+
+  --sidebar-bg: #ffffff;
+  --topbar-bg: #ffffff;
+
+  --text: #172033;
+  --text-secondary: #596579;
+  --muted: #6b7688;
+
+  --border: #e3e7ee;
+  --border-strong: #cfd6e2;
+  --hover: #f1f3f7;
+
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-active: #3730a3;
+  --primary-fg: #ffffff;
+  --primary-subtle: #eef2ff;
+  --primary-subtle-fg: #3730a3;
+
+  --success-bg: #ecfdf5;
+  --success-fg: #047857;
+  --success-border: #a7f3d0;
+  --warning-bg: #fffbeb;
+  --warning-fg: #b45309;
+  --warning-border: #fde68a;
+  --danger-bg: #fef2f2;
+  --danger-fg: #b91c1c;
+  --danger-border: #fecaca;
+  /* Solid destructive actions. Deep red reads on white in both themes, so the
+     pair is intentionally identical in the dark override below. */
+  --danger-strong: #b91c1c;
+  --danger-strong-fg: #ffffff;
+  --info-bg: #eff6ff;
+  --info-fg: #1d4ed8;
+  --info-border: #bfdbfe;
+
+  --focus-ring: #4f46e5;
+
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 6%);
+  --shadow: 0 1px 3px rgb(16 24 40 / 8%), 0 1px 2px rgb(16 24 40 / 4%);
+  --shadow-md: 0 4px 12px rgb(16 24 40 / 8%), 0 2px 4px rgb(16 24 40 / 4%);
+  --shadow-lg: 0 12px 32px rgb(16 24 40 / 12%), 0 4px 8px rgb(16 24 40 / 6%);
+
+  /* Chart series — distinguishable without relying on colour alone; each is
+     paired with a distinct label or pattern at the call site. */
+  --chart-1: #4f46e5;
+  --chart-2: #0891b2;
+  --chart-3: #c026d3;
+  --chart-4: #ea580c;
+  --chart-5: #16a34a;
+  --chart-6: #64748b;
+  --chart-grid: #e8ecf3;
+
+  --scrim: rgb(15 23 42 / 45%);
+}
+
+/* ── semantic colour: DARK (explicit) ─────────────────────────────────────── */
+:root[data-theme='dark'] {
+  --bg: #0b1020;
+  --surface: #111827;
+  --surface-raised: #182235;
+  --surface-sunken: #0d1424;
+  --surface-hover: #1b2436;
+  --surface-selected: #252b4b;
+
+  --sidebar-bg: #0d1424;
+  --topbar-bg: #0d1424;
+
+  --text: #f1f5f9;
+  --text-secondary: #a6b2c5;
+  --muted: #8d9ab0;
+
+  --border: #293449;
+  --border-strong: #3a465c;
+  --hover: #1b2436;
+
+  --primary: #818cf8;
+  --primary-hover: #a5b4fc;
+  --primary-active: #c7d2fe;
+  --primary-fg: #0b1020;
+  --primary-subtle: #1e2440;
+  --primary-subtle-fg: #c7d2fe;
+
+  --success-bg: #06281f;
+  --success-fg: #6ee7b7;
+  --success-border: #115e46;
+  --warning-bg: #2a1f06;
+  --warning-fg: #fcd34d;
+  --warning-border: #78500a;
+  --danger-bg: #2c1113;
+  --danger-fg: #fca5a5;
+  --danger-border: #7f1d1d;
+  --info-bg: #0c1e3d;
+  --info-fg: #93c5fd;
+  --info-border: #1e3a8a;
+
+  --focus-ring: #a5b4fc;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow: 0 1px 3px rgb(0 0 0 / 45%), 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 50%), 0 2px 4px rgb(0 0 0 / 30%);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%), 0 4px 8px rgb(0 0 0 / 35%);
+
+  --chart-1: #818cf8;
+  --chart-2: #22d3ee;
+  --chart-3: #f0abfc;
+  --chart-4: #fb923c;
+  --chart-5: #4ade80;
+  --chart-6: #94a3b8;
+  --chart-grid: #1f2a3d;
+
+  --scrim: rgb(2 6 18 / 65%);
+}
+
+/* ── semantic colour: DARK (system preference, no explicit choice) ───────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    /* Tells the browser that dark is intended: native popups (select lists),
+       scrollbars and form controls render dark. Without this the page goes
+       dark while the OS keeps painting light widgets — white-on-white
+       dropdown options you can only see while hovering. */
+    color-scheme: dark;
+    --bg: #0b1020;
+    --surface: #111827;
+    --surface-raised: #182235;
+    --surface-sunken: #0d1424;
+    --surface-hover: #1b2436;
+    --surface-selected: #252b4b;
+
+    --sidebar-bg: #0d1424;
+    --topbar-bg: #0d1424;
+
+    --text: #f1f5f9;
+    --text-secondary: #a6b2c5;
+    --muted: #8d9ab0;
+
+    --border: #293449;
+    --border-strong: #3a465c;
+    --hover: #1b2436;
+
+    --primary: #818cf8;
+    --primary-hover: #a5b4fc;
+    --primary-active: #c7d2fe;
+    --primary-fg: #0b1020;
+    --primary-subtle: #1e2440;
+    --primary-subtle-fg: #c7d2fe;
+
+    --success-bg: #06281f;
+    --success-fg: #6ee7b7;
+    --success-border: #115e46;
+    --warning-bg: #2a1f06;
+    --warning-fg: #fcd34d;
+    --warning-border: #78500a;
+    --danger-bg: #2c1113;
+    --danger-fg: #fca5a5;
+    --danger-border: #7f1d1d;
+    --info-bg: #0c1e3d;
+    --info-fg: #93c5fd;
+    --info-border: #1e3a8a;
+
+    --focus-ring: #a5b4fc;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow: 0 1px 3px rgb(0 0 0 / 45%), 0 1px 2px rgb(0 0 0 / 30%);
+    --shadow-md: 0 4px 12px rgb(0 0 0 / 50%), 0 2px 4px rgb(0 0 0 / 30%);
+    --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%), 0 4px 8px rgb(0 0 0 / 35%);
+
+    --chart-1: #818cf8;
+    --chart-2: #22d3ee;
+    --chart-3: #f0abfc;
+    --chart-4: #fb923c;
+    --chart-5: #4ade80;
+    --chart-6: #94a3b8;
+    --chart-grid: #1f2a3d;
+
+    --scrim: rgb(2 6 18 / 65%);
+  }
+}
+
+/* Explicit light choice must win over the OS-dark block above. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* ── motion preferences ─────────────────────────────────────────────────────
+   Every transition in the app is collapsed for users who ask for reduced
+   motion. Animation is never the sole carrier of state, so nothing becomes
+   undecidable without it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── global base ─────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* A theme change should cross-fade rather than snap, but only briefly and
+     never on first paint. */
+  transition: background-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out);
+}
+
+/* A single, consistent focus treatment everywhere. Never removed, only moved. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--primary-subtle);
+  color: var(--primary-subtle-fg);
+}

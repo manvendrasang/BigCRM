@@ -1,0 +1,28 @@
+# DAST target: the API behind a TLS terminator.
+#
+# `config/env.ts` refuses to boot in production with a plaintext APP_ORIGINS,
+# which is correct — but it means DAST cannot probe the production configuration
+# directly over http://. Rather than downgrade NODE_ENV and scan a different
+# configuration than the one that ships, this puts a TLS terminator in front,
+# which is exactly what the ALB does in the target topology from
+# docs/DEPLOYMENT.md.
+#
+#   ZAP -> https://localhost:8443 (caddy, TLS) -> http://bigcrm-api:3000
+#
+# The API container therefore runs with its real production settings: HSTS on,
+# Secure cookies, upgrade-insecure-requests in the CSP.
+{
+	admin off
+	auto_https disable_redirects
+}
+
+localhost:8443 {
+	tls internal
+	reverse_proxy bigcrm-api:3000 {
+		header_up X-Forwarded-Proto https
+		header_up X-Forwarded-For {remote_host}
+	}
+	log {
+		output stdout
+	}
+}

@@ -137,6 +137,11 @@ dist
 !.yarn/sdks
 !.yarn/versions
 
+# BigCRM runtime data — user uploads/exports and local database files.
+# Never commit: generated at runtime, potentially customer data.
+.bigcrm-storage/
+.pgdata/
+
 # Vite files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*

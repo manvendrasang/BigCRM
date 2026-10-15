@@ -1,0 +1,28 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "allowImportingTsExtensions": false,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src/**/*.ts"],
+  // `include`/`exclude` do NOT inherit through `extends` in the way one expects:
+  // restating `include` here replaces the parent's, and `exclude` must be
+  // restated too.
+  //
+  // Two things must be excluded, and both were found by running the build rather
+  // than reading it:
+  //   • `src/tests/**` — shipping the test suite inside the runtime image would
+  //     put PGlite, fixture code and the whole harness in production.
+  //   • the disabled MongoDB sources — `npm run typecheck` stayed green (it
+  //     reads tsconfig.json, which excludes them) while `npm run build` failed on
+  //     them, breaking the image build with a green typecheck.
+  //
+  // `unit/modules.test.ts` asserts this list stays in sync with tsconfig.json.
+  "exclude": [
+    "src/tests/**/*",
+    "src/integrations/mongodb.ts",
+    "src/tests/unit/mongodb.test.ts"
+  ]
+}

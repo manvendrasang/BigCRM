@@ -1,0 +1,356 @@
+{
+  "SchemaVersion": 2,
+  "CreatedAt": "2026-10-12T10:25:01.310238372Z",
+  "ArtifactName": "bigcrm-api:final",
+  "ArtifactType": "container_image",
+  "Metadata": {
+    "OS": {
+      "Family": "debian",
+      "Name": "12.15"
+    },
+    "ImageID": "sha256:8a09aa9204f585263ad79e391cba5bc531e737e8d676d4e1d870578864bc96d2",
+    "DiffIDs": [
+      "sha256:eb5f13bce9936c760b9fa73aeb1b608787daa36106cc888104132e353ed37252",
+      "sha256:5e63d79d36027aac3b9fffcdd79aec007ba39bac1fbb918dcd6db5aa41f9c19a",
+      "sha256:06769c9c802b79461910d4a68119c97dce29b4e1d1d47039c760aba60e084629",
+      "sha256:4f5fd88901b05e59a3cd054b22447a2ad4b13fb964da9489f023ffea11683856",
+      "sha256:b54dd33191f2b56314b0cb0e39066c22ec5a18f11f1fcc7a279f319d3da8a49a",
+      "sha256:37c5073cd4196bfdbee19c8023247cb0fa2393ae5cc0332dccda1951a71c7de6",
+      "sha256:af572155b25b1776ebdc6c68e755440c8236cb1bc56ba8fd62340958a304d6dd",
+      "sha256:181da102a343d4efb1ebd01eb8861b67d58f7ee5734d991c93d3ebb069667012",
+      "sha256:d389a6087ba69c13c615d5965456cc6ab51176817281975cd32a6ca67eaa56c6",
+      "sha256:6b8e0b8a29cee7619a0035f68dfd32889169516c9cb370dcf61e5d65539ba02b",
+      "sha256:92a73051be3acf200943ce3aec8fb8f7546feb23d5007e2afa331b7727bbfd9a",
+      "sha256:9cb595fd71bd3fc62d3e92351fd2b46ab3d2c95924891c9fadea5a4d3bfef90a",
+      "sha256:6bf7bb0beaa7ccba071e5e7761f816fa7c8a0a7cacdeacd32f10767d54ba036c"
+    ],
+    "RepoTags": [
+      "bigcrm-api:final"
+    ],
+    "RepoDigests": [
+      "bigcrm-api@sha256:8a09aa9204f585263ad79e391cba5bc531e737e8d676d4e1d870578864bc96d2"
+    ],
+    "ImageConfig": {
+      "architecture": "amd64",
+      "created": "2026-10-12T15:52:28.907715951+05:30",
+      "history": [
+        {
+          "created": "2025-08-01T10:06:16Z",
+          "created_by": "# debian.sh --arch 'amd64' out/ 'bookworm' '@1754870400'",
+          "comment": "debuerreotype 0.15"
+        },
+        {
+          "created": "2025-08-01T10:06:16Z",
+          "created_by": "RUN /bin/sh -c groupadd --gid 1000 node   \u0026\u0026 useradd --uid 1000 --gid node --shell /bin/bash --create-home node # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-08-01T10:06:16Z",
+          "created_by": "ENV NODE_VERSION=22.18.0",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2025-08-01T10:06:16Z",
+          "created_by": "RUN /bin/sh -c ARCH= OPENSSL_ARCH= \u0026\u0026 dpkgArch=\"$(dpkg --print-architecture)\"     \u0026\u0026 case \"${dpkgArch##*-}\" in       amd64) ARCH='x64' OPENSSL_ARCH='linux-x86_64';;       ppc64el) ARCH='ppc64le' OPENSSL_ARCH='linux-ppc64le';;       s390x) ARCH='s390x' OPENSSL_ARCH='linux*-s390x';;       arm64) ARCH='arm64' OPENSSL_ARCH='linux-aarch64';;       armhf) ARCH='armv7l' OPENSSL_ARCH='linux-armv4';;       i386) ARCH='x86' OPENSSL_ARCH='linux-elf';;       *) echo \"unsupported architecture\"; exit 1 ;;     esac     \u0026\u0026 set -ex     \u0026\u0026 apt-get update \u0026\u0026 apt-get install -y ca-certificates curl wget gnupg dirmngr xz-utils libatomic1 --no-install-recommends     \u0026\u0026 rm -rf /var/lib/apt/lists/*     \u0026\u0026 export GNUPGHOME=\"$(mktemp -d)\"     \u0026\u0026 for key in       5BE8A3F6C8A5C01D106C0AD820B1A390B168D356       DD792F5973C6DE52C432CBDAC77ABFA00DDBF2B7       CC68F5A3106FF448322E48ED27F5E38D5B0A215F       8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600       890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4       C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C       108F52B48DB57BB0CC439B2997B01419BD92F80A       A363A499291CBBC940DD62E41F10027AF002F8B0     ; do       { gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys \"$key\" \u0026\u0026 gpg --batch --fingerprint \"$key\"; } ||       { gpg --batch --keyserver keyserver.ubuntu.com --recv-keys \"$key\" \u0026\u0026 gpg --batch --fingerprint \"$key\"; } ;     done     \u0026\u0026 curl -fsSLO --compressed \"https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$ARCH.tar.xz\"     \u0026\u0026 curl -fsSLO --compressed \"https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc\"     \u0026\u0026 gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc     \u0026\u0026 gpgconf --kill all     \u0026\u0026 rm -rf \"$GNUPGHOME\"     \u0026\u0026 grep \" node-v$NODE_VERSION-linux-$ARCH.tar.xz\\$\" SHASUMS256.txt | sha256sum -c -     \u0026\u0026 tar -xJf \"node-v$NODE_VERSION-linux-$ARCH.tar.xz\" -C /usr/local --strip-components=1 --no-same-owner     \u0026\u0026 rm \"node-v$NODE_VERSION-linux-$ARCH.tar.xz\" SHASUMS256.txt.asc SHASUMS256.txt     \u0026\u0026 find /usr/local/include/node/openssl/archs -mindepth 1 -maxdepth 1 ! -name \"$OPENSSL_ARCH\" -exec rm -rf {} \\;     \u0026\u0026 apt-mark auto '.*' \u003e /dev/null     \u0026\u0026 find /usr/local -type f -executable -exec ldd '{}' ';'       | awk '/=\u003e/ { so = $(NF-1); if (index(so, \"/usr/local/\") == 1) { next }; gsub(\"^/(usr/)?\", \"\", so); print so }'       | sort -u       | xargs -r dpkg-query --search       | cut -d: -f1       | sort -u       | xargs -r apt-mark manual     \u0026\u0026 apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false     \u0026\u0026 ln -s /usr/local/bin/node /usr/local/bin/nodejs     \u0026\u0026 node --version     \u0026\u0026 npm --version     \u0026\u0026 rm -rf /tmp/* # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-08-01T10:06:16Z",
+          "created_by": "ENV YARN_VERSION=1.22.22",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2025-08-01T10:06:16Z",
+          "created_by": "RUN /bin/sh -c set -ex   \u0026\u0026 savedAptMark=\"$(apt-mark showmanual)\"   \u0026\u0026 apt-get update \u0026\u0026 apt-get install -y ca-certificates curl wget gnupg dirmngr --no-install-recommends   \u0026\u0026 rm -rf /var/lib/apt/lists/*   \u0026\u0026 export GNUPGHOME=\"$(mktemp -d)\"   \u0026\u0026 for key in     6A010C5166006599AA17F08146C2130DFD2497F5   ; do     { gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys \"$key\" \u0026\u0026 gpg --batch --fingerprint \"$key\"; } ||     { gpg --batch --keyserver keyserver.ubuntu.com --recv-keys \"$key\" \u0026\u0026 gpg --batch --fingerprint \"$key\"; } ;   done   \u0026\u0026 curl -fsSLO --compressed \"https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz\"   \u0026\u0026 curl -fsSLO --compressed \"https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz.asc\"   \u0026\u0026 gpg --batch --verify yarn-v$YARN_VERSION.tar.gz.asc yarn-v$YARN_VERSION.tar.gz   \u0026\u0026 gpgconf --kill all   \u0026\u0026 rm -rf \"$GNUPGHOME\"   \u0026\u0026 mkdir -p /opt   \u0026\u0026 tar -xzf yarn-v$YARN_VERSION.tar.gz -C /opt/   \u0026\u0026 ln -s /opt/yarn-v$YARN_VERSION/bin/yarn /usr/local/bin/yarn   \u0026\u0026 ln -s /opt/yarn-v$YARN_VERSION/bin/yarnpkg /usr/local/bin/yarnpkg   \u0026\u0026 rm yarn-v$YARN_VERSION.tar.gz.asc yarn-v$YARN_VERSION.tar.gz   \u0026\u0026 apt-mark auto '.*' \u003e /dev/null   \u0026\u0026 { [ -z \"$savedAptMark\" ] || apt-mark manual $savedAptMark \u003e /dev/null; }   \u0026\u0026 find /usr/local -type f -executable -exec ldd '{}' ';'     | awk '/=\u003e/ { so = $(NF-1); if (index(so, \"/usr/local/\") == 1) { next }; gsub(\"^/(usr/)?\", \"\", so); print so }'     | sort -u     | xargs -r dpkg-query --search     | cut -d: -f1     | sort -u     | xargs -r apt-mark manual   \u0026\u0026 apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false   \u0026\u0026 yarn --version   \u0026\u0026 rm -rf /tmp/* # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-08-01T10:06:16Z",
+          "created_by": "COPY docker-entrypoint.sh /usr/local/bin/ # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2025-08-01T10:06:16Z",
+          "created_by": "ENTRYPOINT [\"docker-entrypoint.sh\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2025-08-01T10:06:16Z",
+          "created_by": "CMD [\"node\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-11T10:21:52Z",
+          "created_by": "RUN /bin/sh -c apt-get update  \u0026\u0026 apt-get install -y --no-install-recommends dumb-init ca-certificates  \u0026\u0026 apt-get upgrade -y --no-install-recommends  \u0026\u0026 rm -rf /var/lib/apt/lists/* # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-11T10:21:53Z",
+          "created_by": "RUN /bin/sh -c rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack  \u0026\u0026 rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack  \u0026\u0026 npm cache clean --force 2\u003e/dev/null || true # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-11T10:21:53Z",
+          "created_by": "ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0 NODE_OPTIONS=--enable-source-maps",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-11T10:21:53Z",
+          "created_by": "WORKDIR /app",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-11T10:21:53Z",
+          "created_by": "COPY --chown=node:node /app/node_modules ./node_modules # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-12T10:22:28Z",
+          "created_by": "COPY --chown=node:node /app/server/dist ./server/dist # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-12T10:22:28Z",
+          "created_by": "COPY --chown=node:node /app/server/package.json ./server/package.json # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-12T10:22:28Z",
+          "created_by": "COPY --chown=node:node package.json ./ # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-12T10:22:28Z",
+          "created_by": "RUN /bin/sh -c mkdir -p /data/storage \u0026\u0026 chown node:node /data/storage # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-12T10:22:28Z",
+          "created_by": "ENV STORAGE_LOCAL_DIR=/data/storage",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-12T10:22:28Z",
+          "created_by": "USER node",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-12T10:22:28Z",
+          "created_by": "EXPOSE map[3000/tcp:{}]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-12T10:22:28Z",
+          "created_by": "HEALTHCHECK \u0026{[\"CMD-SHELL\" \"node -e \\\"fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=\u003eprocess.exit(r.ok?0:1)).catch(()=\u003eprocess.exit(1))\\\"\"] \"30s\" \"3s\" \"20s\" \"0s\" '\\x03'}",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-12T10:22:28Z",
+          "created_by": "ENTRYPOINT [\"dumb-init\" \"--\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-12T10:22:28Z",
+          "created_by": "CMD [\"node\" \"server/dist/index.js\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:eb5f13bce9936c760b9fa73aeb1b608787daa36106cc888104132e353ed37252",
+          "sha256:5e63d79d36027aac3b9fffcdd79aec007ba39bac1fbb918dcd6db5aa41f9c19a",
+          "sha256:06769c9c802b79461910d4a68119c97dce29b4e1d1d47039c760aba60e084629",
+          "sha256:4f5fd88901b05e59a3cd054b22447a2ad4b13fb964da9489f023ffea11683856",
+          "sha256:b54dd33191f2b56314b0cb0e39066c22ec5a18f11f1fcc7a279f319d3da8a49a",
+          "sha256:37c5073cd4196bfdbee19c8023247cb0fa2393ae5cc0332dccda1951a71c7de6",
+          "sha256:af572155b25b1776ebdc6c68e755440c8236cb1bc56ba8fd62340958a304d6dd",
+          "sha256:181da102a343d4efb1ebd01eb8861b67d58f7ee5734d991c93d3ebb069667012",
+          "sha256:d389a6087ba69c13c615d5965456cc6ab51176817281975cd32a6ca67eaa56c6",
+          "sha256:6b8e0b8a29cee7619a0035f68dfd32889169516c9cb370dcf61e5d65539ba02b",
+          "sha256:92a73051be3acf200943ce3aec8fb8f7546feb23d5007e2afa331b7727bbfd9a",
+          "sha256:9cb595fd71bd3fc62d3e92351fd2b46ab3d2c95924891c9fadea5a4d3bfef90a",
+          "sha256:6bf7bb0beaa7ccba071e5e7761f816fa7c8a0a7cacdeacd32f10767d54ba036c"
+        ]
+      },
+      "config": {
+        "Cmd": [
+          "node",
+          "server/dist/index.js"
+        ],
+        "Healthcheck": {
+          "Test": [
+            "CMD-SHELL",
+            "node -e \"fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=\u003eprocess.exit(r.ok?0:1)).catch(()=\u003eprocess.exit(1))\""
+          ],
+          "Interval": 30000000000,
+          "Timeout": 3000000000,
+          "StartPeriod": 20000000000,
+          "Retries": 3
+        },
+        "Entrypoint": [
+          "dumb-init",
+          "--"
+        ],
+        "Env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "NODE_VERSION=22.18.0",
+          "YARN_VERSION=1.22.22",
+          "NODE_ENV=production",
+          "PORT=3000",
+          "HOST=0.0.0.0",
+          "NODE_OPTIONS=--enable-source-maps",
+          "STORAGE_LOCAL_DIR=/data/storage"
+        ],
+        "User": "node",
+        "WorkingDir": "/app",
+        "ArgsEscaped": true
+      }
+    }
+  },
+  "Results": [
+    {
+      "Target": "bigcrm-api:final (debian 12.15)",
+      "Class": "os-pkgs",
+      "Type": "debian"
+    },
+    {
+      "Target": "Node.js",
+      "Class": "lang-pkgs",
+      "Type": "node-pkg",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2026-53666",
+          "PkgID": "react-router@6.30.6",
+          "PkgName": "react-router",
+          "PkgPath": "app/node_modules/react-router/package.json",
+          "PkgIdentifier": {
+            "PURL": "pkg:npm/react-router@6.30.6",
+            "UID": "7f180b3ac3feb7ee"
+          },
+          "InstalledVersion": "6.30.6",
+          "FixedVersion": "7.18.0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:a2aafb9999025f226ee55e102dc8c640ae4f8f07b84da668084209aa29eceb04",
+            "DiffID": "sha256:d389a6087ba69c13c615d5965456cc6ab51176817281975cd32a6ca67eaa56c6"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-53666",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory npm",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Anpm"
+          },
+          "Title": "react-router: React Router: Information disclosure via client-side constructor execution",
+          "Description": "React Router is a router for React. In versions 6.4.0 through 7.17.0, if application code was written in a way that allows attacker-supplied input to overwrite certain aspects of errors caught by the SSR process, then it was possible for an attacker to trigger unexpected constructor execution on the client, which would in turn trigger an outbound network request. This is only possible with very specific (and unlikely) application-layer code. Note that this does not impact an application if it is using Declarative Mode. It only impacts Framework Mode and Data Mode applications that perform manual SSR/hydration. This issue has been fixed in version 7.18.0.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-470"
+          ],
+          "VendorSeverity": {
+            "ghsa": 2,
+            "redhat": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "V3Score": 6.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "V3Score": 6.1
+            }
+          },
+          "References": [
+            "https://access.redhat.com/security/cve/CVE-2026-53666",
+            "https://github.com/remix-run/react-router",
+            "https://github.com/remix-run/react-router/blob/main/CHANGELOG.md#v7180",
+            "https://github.com/remix-run/react-router/commit/9d22943fd46c8ae4b08236425fa3549e10e9ad1a",
+            "https://github.com/remix-run/react-router/pull/15175",
+            "https://github.com/remix-run/react-router/releases/tag/react-router@7.18.0",
+            "https://github.com/remix-run/react-router/security/advisories/GHSA-337j-9hxr-rhxg",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-53666",
+            "https://www.cve.org/CVERecord?id=CVE-2026-53666"
+          ],
+          "PublishedDate": "2026-07-27T22:17:30.937Z",
+          "LastModifiedDate": "2026-08-03T14:04:25.027Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2026-53669",
+          "PkgID": "react-router@6.30.6",
+          "PkgName": "react-router",
+          "PkgPath": "app/node_modules/react-router/package.json",
+          "PkgIdentifier": {
+            "PURL": "pkg:npm/react-router@6.30.6",
+            "UID": "7f180b3ac3feb7ee"
+          },
+          "InstalledVersion": "6.30.6",
+          "FixedVersion": "7.18.0",
+          "Status": "fixed",
+          "Layer": {
+            "Digest": "sha256:a2aafb9999025f226ee55e102dc8c640ae4f8f07b84da668084209aa29eceb04",
+            "DiffID": "sha256:d389a6087ba69c13c615d5965456cc6ab51176817281975cd32a6ca67eaa56c6"
+          },
+          "SeveritySource": "ghsa",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2026-53669",
+          "DataSource": {
+            "ID": "ghsa",
+            "Name": "GitHub Security Advisory npm",
+            "URL": "https://github.com/advisories?query=type%3Areviewed+ecosystem%3Anpm"
+          },
+          "Title": "react-router: React Router: Open Redirect vulnerability via backslashes in navigation components",
+          "Description": "React Router is a router for React. Versions 6.0.0 through 7.17.0 are vulnerable to Open Redirtect through use of backslashes in \u003cLink\u003e and useNavigate. This issue is a follow up to CVE-2025-68470 and has been fixed in version 7.18.0.",
+          "Severity": "MEDIUM",
+          "CweIDs": [
+            "CWE-601"
+          ],
+          "VendorSeverity": {
+            "ghsa": 2,
+            "nvd": 2,
+            "redhat": 2
+          },
+          "CVSS": {
+            "ghsa": {
+              "V40Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:A/VC:N/VI:L/VA:N/SC:L/SI:L/SA:N",
+              "V40Score": 5.1
+            },
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+              "V3Score": 6.1
+            },
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+              "V3Score": 5.4
+            }
+          },
+          "References": [
+            "http://github.com/remix-run/react-router/pull/15176",
+            "https://access.redhat.com/security/cve/CVE-2026-53669",
+            "https://github.com/remix-run/react-router",
+            "https://github.com/remix-run/react-router/blob/main/CHANGELOG.md#v7180",
+            "https://github.com/remix-run/react-router/pull/15176",
+            "https://github.com/remix-run/react-router/releases/tag/react-router@7.18.0",
+            "https://github.com/remix-run/react-router/security/advisories/GHSA-wrjc-x8rr-h8h6",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-53669",
+            "https://www.cve.org/CVERecord?id=CVE-2026-53669"
+          ],
+          "PublishedDate": "2026-07-27T22:17:31.377Z",
+          "LastModifiedDate": "2026-08-03T13:56:59.517Z"
+        }
+      ]
+    }
+  ]
+}

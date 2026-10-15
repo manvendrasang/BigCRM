@@ -1,0 +1,32 @@
+Copyright © 2026 Manvendra Sang. All rights reserved.
+
+BigCRM is proprietary software.
+
+No permission is granted to use, copy, modify, reproduce, distribute, publish,
+sublicense, sell, or incorporate any portion of this software into another
+project without prior written permission from the copyright holder.
+
+This restriction applies to the current version and all historical versions,
+commits, releases, and branches.
+
+Viewing or accessing this repository does not grant a licence or any other right
+to use the software.
+
+--------------------------------------------------------------------------------
+NOTICE ON CODE REUSE
+--------------------------------------------------------------------------------
+
+This repository was created as a consolidation of two earlier internal projects,
+which are both proprietary and remain so:
+
+  * Agentic/ticket-system  ("ShopWave CRM")
+  * taskmanager/team-task-manager  ("TaskFlow")
+
+No source code has been copied verbatim from either project. The concepts reused
+(tenant isolation, RBAC, audit logging, contact/company/lead/deal domain model,
+cascading deletes, refresh-token rotation) were reimplemented against the
+architecture documented in docs/ARCHITECTURE.md, and the security defects
+identified in those codebases are catalogued in docs/SECURITY_FINDINGS.md.
+
+Any future port of code from those repositories into this one requires an
+explicit written decision recorded in docs/PROJECT_STATUS.md.
