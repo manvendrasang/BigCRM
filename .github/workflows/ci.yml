@@ -118,7 +118,7 @@ jobs:
           STORAGE_SIGNING_SECRET: ci-storage-secret-0123456789abcdef012
           APP_ORIGINS: http://localhost:3000
         run: |
-          node --experimental-strip-types server/src/db/cli.ts up
+          node --experimental-strip-types server/src/db/cli.ts migrate:up
           node --experimental-strip-types server/src/db/cli.ts status
 
       - uses: actions/upload-artifact@v4
