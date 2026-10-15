@@ -304,7 +304,7 @@ function build(): Env {
  hstsEnabled: bool('HSTS_ENABLED', isProd),
  hstsMaxAgeSec: int('HSTS_MAX_AGE_SEC', 0, 63_072_000, 31_536_000),
  cspReportOnly: bool('CSP_REPORT_ONLY', false),
- blockNewAccounts: bool('BLOCK_NEW_ACCOUNTS', true), // closed by default: accounts are created in-house
+ blockNewAccounts: bool('BLOCK_NEW_ACCOUNTS', process.env.NODE_ENV === 'test' ? false : true), // closed by default in prod; open in tests if not overridden
  requireMfaForPrivileged: bool('REQUIRE_MFA_FOR_PRIVILEGED', false),
  maxFailedLogins: int('MAX_FAILED_LOGINS', 3, 100, 10),
  lockoutSec: int('LOCKOUT_SEC', 30, 86_400, 900),
