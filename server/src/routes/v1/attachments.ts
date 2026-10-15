@@ -94,7 +94,7 @@ attachmentsRouter.get(
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Disposition',
       `attachment; filename="${attachment.fileName.replace(/["\r\n]/g, '')}"`);
-    res.send(bytes);
+    res.send(bytes); // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write — intentional: binary file download with Content-Disposition: attachment, not HTML rendering
   }),
 );
 

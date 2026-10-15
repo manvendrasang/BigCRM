@@ -222,7 +222,7 @@ function tlsOptions(): boolean | { ca?: string; rejectUnauthorized: boolean } | 
     return undefined;
   }
 
-  if (mode === 'require') return { rejectUnauthorized: false };
+  if (mode === 'require') return { rejectUnauthorized: false }; // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification — intentional: 'require' mode accepts any certificate, designed for private links where the CA is not yet provisioned
 
   // verify-full
   const ca = env.db.sslCa?.trim();

@@ -126,7 +126,8 @@ describe('ProjectDetail page', () => {
 
     // The dialog asks because Won ends the project.
     expect(await screen.findByText('This marks the project won.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Move', exact: true }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Move' }));
 
     await waitFor(() => {
       expect(posted).toHaveLength(1);

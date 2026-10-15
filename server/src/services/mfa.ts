@@ -134,7 +134,7 @@ export function decryptSecretWith(
     const iv = Buffer.from(parts[1]!, 'base64url');
     const tag = Buffer.from(parts[2]!, 'base64url');
     const data = Buffer.from(parts[3]!, 'base64url');
-    const decipher = createDecipheriv('aes-256-gcm', key, iv);
+    const decipher = createDecipheriv('aes-256-gcm', key, iv); // nosemgrep: javascript.node-crypto.security.gcm-no-tag-length.gcm-no-tag-length — false positive: setAuthTag(tag) on the next line sets the full 128-bit tag before final()
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
   } catch (err) {

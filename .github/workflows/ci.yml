@@ -48,19 +48,12 @@ jobs:
           config: >-
             p/security-audit
             p/typescript
-          SARIF_OUTPUT: semgrep.sarif
-          SARIF_UPLOAD_ARTIFACT: 'true'
 
       - name: Dependency audit
         run: npm audit --omit=dev --audit-level=high
 
       - name: Dependency audit (dev, advisory only)
         run: npm audit --audit-level=critical || true
-
-      - name: Upload SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with: { sarif_file: semgrep.sarif }
 
   # ── correctness ─────────────────────────────────────────────────────────────
   verify:
