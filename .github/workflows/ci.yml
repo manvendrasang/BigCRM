@@ -151,7 +151,7 @@ jobs:
 
       # RULE 90: scan for OS vulns, dependency vulns and secrets.
       - name: Image scan (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: bigcrm:ci
           format: sarif
@@ -160,7 +160,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Fail on Critical/High image findings
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: bigcrm:ci
           format: table
