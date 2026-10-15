@@ -69,12 +69,6 @@ export interface AuthContextValue {
  isAuthenticated: boolean;
  isLoading: boolean;
  login: (email: string, password: string) => Promise<void>;
- register: (input: {
- organizationName: string;
- name: string;
- email: string;
- password: string;
- }) => Promise<void>;
  logout: () => Promise<void>;
  clearError: () => void;
  error: string | null;
@@ -177,27 +171,6 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
  }
  }, []);
 
- const register = useCallback(
- async (input: { organizationName: string; name: string; email: string; password: string }) => {
- setError(null);
- try {
- // Registration deliberately does not return a session: the server sends
- // a verification email and never places a token in the response body.
- await api.post<{ user: SessionUser; organizationName: string }>('/auth/register', {
- organizationName: input.organizationName,
- name: input.name,
- email: input.email,
- password: input.password,
- });
- } catch (err) {
- const message = describe(err);
- setError(message);
- throw err;
- }
- },
- [],
- );
-
  const logout = useCallback(async () => {
  try {
  await api.post('/auth/logout', undefined, { skipRefresh: true });
@@ -219,12 +192,11 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
  isAuthenticated: user !== null,
  isLoading,
  login,
- register,
  logout,
  clearError,
  error,
  }),
- [user, actor, isLoading, login, register, logout, clearError, error],
+ [user, actor, isLoading, login, logout, clearError, error],
  );
 
  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

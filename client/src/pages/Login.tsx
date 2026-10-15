@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { redirectTargetFrom } from '../lib/redirect';
 
@@ -96,7 +96,7 @@ export function Login(): JSX.Element {
  </form>
 
  <p className="card-footer">
- No account yet? <Link to="/register">Create an organization</Link>
+ Accounts are created by your workspace owner. Contact them to get access.
  </p>
  </section>
  </main>

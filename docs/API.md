@@ -81,7 +81,7 @@ about HTTP behaviour, and at the service layer otherwise.
 
 | Method | Path | Permission | Notes |
 |---|---|---|---|
-| POST | `/api/v1/auth/register` | -- | Atomic: user + org + membership |
+| POST | `/api/v1/auth/register` | -- | Atomic: user + org + membership. **Closed by default** (`BLOCK_NEW_ACCOUNTS=true`) -> 503 `REGISTRATION_CLOSED`; accounts are created in-house |
 | POST | `/api/v1/auth/login` | -- | Timing-equalised; per-account limit; returns `mfaRequired` when enrolled |
 | POST | `/api/v1/auth/refresh` | -- | Rotating, reuse -> family revoked |
 | POST | `/api/v1/auth/logout` | session | Revokes the current session |
@@ -122,6 +122,7 @@ constraint refuses `mfa_enabled = true` without one.
 | GET/PATCH | `/api/v1/org` | `organization.read` / `.update` | Allowlisted fields; unknown field -> 422 |
 | GET | `/api/v1/org/roles` | `organization.read` | Assignable roles + hierarchy |
 | GET | `/api/v1/org/members` | `users.read` | Tenant-scoped |
+| POST | `/api/v1/org/members` | `users.create` | **In-house account creation.** Email + role in; a generated password is returned **once** and never re-readable. Ownership can never be minted here |
 | PATCH | `/api/v1/org/members/{id}/role` | `users.update` | Hierarchy enforced; self-change refused; sessions revoked |
 | DELETE | `/api/v1/org/members/{id}` | `users.remove` | Last-owner protected |
 | POST | `/api/v1/org/members/transfer-ownership` | owner only | Re-authentication required; atomic; revokes both users' sessions |

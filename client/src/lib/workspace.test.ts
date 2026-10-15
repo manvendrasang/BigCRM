@@ -12,11 +12,14 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+ createMember,
  getCalendar,
  inviteToMeeting,
  listActivities,
+ listAssignableRoles,
  listAuditLogs,
  listInvitees,
+ listMembers,
  listMyInvites,
  listNotifications,
  listViews,
@@ -346,5 +349,57 @@ describe('deleteView', () => {
  );
 
  await expect(deleteView('v1')).rejects.toThrow();
+ });
+});
+
+describe('members', () => {
+ it('lists the roster as the bare array the endpoint sends', async () => {
+  setFetchImplementation(async () =>
+  jsonResponse([{ userId: 'u1', email: 'ava@corp.io', name: 'Ava', role: 'sales', status: 'active', mfaEnabled: false, lastLoginAt: null }]),
+  );
+
+  const rows = await listMembers();
+
+  expect(rows).toHaveLength(1);
+  expect(rows[0]!.role).toBe('sales');
+ });
+
+ it('degrades to an empty roster on an unexpected shape', async () => {
+  setFetchImplementation(async () => jsonResponse({ nope: true }));
+
+  await expect(listMembers()).resolves.toEqual([]);
+ });
+
+ it('unwraps the role matrix the create form is built from', async () => {
+  setFetchImplementation(async () =>
+  jsonResponse({ data: { assignable: ['manager', 'sales', 'viewer'], hierarchy: ['owner', 'admin'], note: 'use transfer-ownership' } }),
+  );
+
+  const roles = await listAssignableRoles();
+
+  expect(roles.assignable).toEqual(['manager', 'sales', 'viewer']);
+  expect(roles.hierarchy).toContain('owner');
+  expect(roles.note).toContain('transfer-ownership');
+ });
+
+ it('degrades to "no assignable roles" on an unexpected shape', async () => {
+  setFetchImplementation(async () => jsonResponse([]));
+
+  await expect(listAssignableRoles()).resolves.toEqual({ assignable: [], hierarchy: [] });
+ });
+
+ it('posts the new member and returns the one-time password', async () => {
+  const seen: { url: string; method: string; body: unknown }[] = [];
+  setFetchImplementation(async (url, init) => {
+  seen.push({ url, method: String((init as { method?: string })?.method), body: JSON.parse(String((init as { body?: string })?.body)) });
+  return jsonResponse({ data: { user: { id: 'u9', email: 'new@corp.io' }, membershipRole: 'sales', generatedPassword: 'GENERATED-PASS-VALUE' } });
+  });
+
+  const created = await createMember({ email: 'new@corp.io', role: 'sales', name: 'New Hire' });
+
+  expect(seen[0]!.url).toContain('/org/members');
+  expect(seen[0]!.method).toBe('POST');
+  expect(seen[0]!.body).toEqual({ email: 'new@corp.io', role: 'sales', name: 'New Hire' });
+  expect(created.generatedPassword).toBe('GENERATED-PASS-VALUE');
  });
 });

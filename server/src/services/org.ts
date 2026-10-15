@@ -15,6 +15,7 @@
  * control of the mailbox or an authenticated identity, and the role offered is
  * bounded by the inviter's own authority.
  */
+import { randomBytes } from 'node:crypto';
 import { env } from '../config/env.ts';
 import { initDriver, TenantScope } from '../repositories/base.ts';
 import type { DbClient } from '../db/driver.ts';
@@ -23,10 +24,12 @@ import { newId } from '../lib/ids.ts';
 import { isExpired, nowIso } from '../lib/time.ts';
 import { hashToken, mintToken, TOKEN_TTL } from '../lib/tokens.ts';
 import { checkPasswordStrength, hashPassword } from '../lib/password.ts';
+import { maskEmail } from '../lib/redact.ts';
 import { logger, securityLog } from '../lib/logger.ts';
 import { normaliseEmail } from './normalise.ts';
 import { persistableIp } from '../lib/ip.ts';
 import { revokeUserSessions } from './auth.ts';
+import type { PublicUser } from './auth.ts';
 import {
  assignableRoles, can, canAssignRole, canRemoveMember, isRole, wouldOrphanOwners,
  type Role,
@@ -98,6 +101,78 @@ export async function listMembers(actor: ActorRef): Promise<MemberRow[]> {
  WHEN 'sales' THEN 3 ELSE 4 END, m.created_at`,
  [actor.organizationId]);
  return r.rows;
+}
+
+/**
+ * In-house member creation: an owner/admin enters an email, the system
+ * generates a password and shows it once. The password is returned only in
+ * this response — it is never stored in plaintext and never re-readable, so
+ * the admin is the delivery mechanism (print, secure chat, whatever the office
+ * uses). The member can change it afterwards from their own account settings.
+ *
+ * Deliberately distinct from `inviteMember`: that one emails a join link,
+ * this one produces credentials directly. Both are gated on `users.invite` /
+ * `users.create` respectively — a sales rep cannot mint accounts.
+ */
+export async function createMember(
+ actor: ActorRef,
+ input: { email: string; role: Role; name?: string },
+): Promise<{ user: PublicUser; membershipRole: Role; generatedPassword: string }> {
+ const db = await initDriver();
+ const email = normaliseEmail(input.email);
+ if (!email) throw validationFailed({ email: 'Enter a valid email address.' });
+ if (!isRole(input.role)) throw validationFailed({ role: 'Choose a valid role.' });
+ // Only roles the actor may assign -- the same rule as invitations.
+ if (!canAssignRole(actor.role, null, input.role)) {
+  throw forbidden('You cannot assign that role.');
+ }
+ const displayName = String(input.name ?? '').trim().slice(0, 120);
+
+ const existing = await db.query<{ id: string }>(
+  'SELECT id FROM users WHERE email_normalized = $1', [email]);
+ if (existing.rows.length > 0) {
+  throw conflict('A user with this email already exists.');
+ }
+
+ const password = randomBytes(18).toString('base64url');
+ const passwordHash = await hashPassword(password);
+ const userId = newId();
+ const now = nowIso();
+ await db.transaction(async (tx) => {
+  // email_verified_at is set at creation: the address was vetted by the admin
+  // who typed it and never needs a mailbox round-trip. default_org_id matches
+  // registerUser so tenant resolution does not depend on insert order at login.
+  await tx.query(
+   `INSERT INTO users (id, email, email_normalized, name, password_hash,
+     email_verified_at, password_changed_at, default_org_id, created_at, updated_at)
+    VALUES ($1,$2,$3,$4,$5,$6,$6,$7,$6,$6)`,
+   [userId, email, email, displayName || email, passwordHash, now, actor.organizationId],
+  );
+  await tx.query(
+   `INSERT INTO organization_members (id, organization_id, user_id, role, status, joined_at, created_at, updated_at)
+    VALUES ($1,$2,$3,$4,'active',$5,$5,$5)`,
+   [newId(), actor.organizationId, userId, input.role, now],
+  );
+  // Same transaction as the inserts: an account never exists without its audit
+  // trail. No before -- creation has no prior state to diff.
+  await writeAudit(tx, {
+   organizationId: actor.organizationId, actorId: actor.userId, actorRole: actor.role,
+   action: 'member.created', entityType: 'user', entityId: userId,
+   after: { email, role: input.role, name: displayName || email },
+  });
+ });
+ securityLog('member.created', {
+  organizationId: actor.organizationId,
+  userId,
+  role: input.role,
+  createdBy: actor.userId,
+  email: maskEmail(email),
+ });
+ return {
+  user: { id: userId, email, name: displayName || email, emailVerified: true, mfaEnabled: false },
+  membershipRole: input.role,
+  generatedPassword: password,
+ };
 }
 
 export async function ownerCount(db: DbClient, organizationId: string): Promise<number> {

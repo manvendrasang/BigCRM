@@ -3,7 +3,7 @@
 What is actually implemented in BigCRM. Each control names its file and, where one
 exists, the test that proves it.
 
-Verified by execution: **549 assertions, 0 failures** (`npm test`).
+Verified by execution: **838 assertions, 0 failures** (`npm test`).
 
 ## 1. Controls
 

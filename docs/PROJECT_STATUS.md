@@ -14,28 +14,29 @@ Every result below was produced by running the command shown, in this repository
 Nothing here is estimated.
 
 ```bash
-npm test # 713 server assertions
+npm test # 838 server assertions, 20 suites
 npm run lint # clean
 npm run typecheck # 0 errors
-npm test -w client # 83 client assertions (5 files)
+npm test -w client # 129 client tests (13 files)
 ```
 
 ```
 SKIPPED (excluded from tsconfig): unit/mongodb.test.ts
 
-Running 17 suite(s)
+Running 20 suite(s)
 ========================================================================
 PASS unit/config.test.ts 19 assertions
 PASS unit/kms.test.ts 10 assertions
-PASS unit/modules.test.ts 72 assertions
+PASS unit/modules.test.ts 75 assertions
 PASS unit/rbac.test.ts 26 assertions
 PASS integration/activity.test.ts 16 assertions
 PASS integration/auth.test.ts 26 assertions
 PASS integration/calendar.test.ts 53 assertions
 PASS integration/http-mfa.test.ts 28 assertions
+PASS integration/http-routes.test.ts 31 assertions
 PASS integration/http.test.ts 100 assertions
-PASS integration/http-routes.test.ts 29 assertions
 PASS integration/item8.test.ts 33 assertions
+PASS integration/members.test.ts 26 assertions
 PASS integration/queue.test.ts 20 assertions
 PASS integration/readOnly.test.ts 7 assertions
 PASS integration/records.test.ts 84 assertions
@@ -45,31 +46,34 @@ PASS integration/savedViews.test.ts 12 assertions
 PASS security/mfa.test.ts 71 assertions
 PASS security/scenarios.test.ts 166 assertions
 ========================================================================
-TOTAL: 812 assertions passed, 0 failed across 19 suites
+TOTAL: 838 assertions passed, 0 failed across 20 suites
 ```
 
 | Suite | Assertions | Covers |
 |---|---:|---|
 | `unit/config.test.ts` | 19 | Production fail-closed config, TLS posture, CA handling -- each booted in a child process |
-| `unit/modules.test.ts` | 71 | Every module loads; disabled sources provably inert; import extensions; secret-shaped literals |
+| `unit/kms.test.ts` | 10 | Envelope encryption against LocalStack KMS; rekey between `env` and `kms` backends |
+| `unit/modules.test.ts` | 75 | Every module loads; disabled sources provably inert; import extensions; secret-shaped literals |
 | `unit/rbac.test.ts` | 26 | Role matrix, hierarchy, last-owner, invariant assertions |
 | `integration/activity.test.ts` | 16 | Audit + notification reads; snapshots omitted; org-AND-user scoping; cross-user 404 |
 | `integration/auth.test.ts` | 26 | Register, login, lockout, sessions, password change/reset, token single-use |
+| `integration/calendar.test.ts` | 53 | Agenda, meetings, invitees, the invites inbox, and accept/decline scoping |
 | `integration/http-mfa.test.ts` | 28 | MFA enrollment and login challenge **over a real socket** |
 | `integration/http-routes.test.ts` | 31 | Every second-wave route: 401 anonymous, 200 authenticated, forged token refused, audit camelCase contract; calendar + invite routes incl. anonymous-POST 401s |
 | `integration/http.test.ts` | 100 | **Over a real socket**: headers, CORS, CSRF, cookies, error shapes, tenant isolation |
 | `integration/item8.test.ts` | 33 | Custom fields, attachments (magic bytes), import/export, idempotency, cross-tenant |
+| `integration/members.test.ts` | 26 | In-house account creation: one-time password, role bounds, permission gate, and a real login round-trip |
+| `integration/queue.test.ts` | 20 | Durable job queue: `SKIP LOCKED` claims, backoff, terminal failure, tenant scoping |
 | `integration/readOnly.test.ts` | 7 | Read-only guard over a real socket: reads pass, writes 503 |
-| `integration/records.test.ts` | 76 | CRM records, tenant isolation, transactional conversion, savepoint regression |
+| `integration/records.test.ts` | 84 | CRM records, tenant isolation, transactional conversion, savepoint regression |
 | `integration/reports.test.ts` | 15 | Pipeline/funnel/load/overview, cross-tenant invisibility, definitions |
 | `integration/retention.test.ts` | 20 | Batched purge, expired-vs-live discrimination, **audit rows never deleted**, leader election |
 | `integration/savedViews.test.ts` | 12 | Private vs shared visibility; non-admin cannot share or delete others' views |
-| `integration/webhooks.test.ts` | 34 | Signature/replay window, SSRF at registration **and** dispatch, event routing, tenant isolation, auto-disable |
-| `security/mfa.test.ts` | 64 | Secret encryption at rest, three-legged enrollment, anti-replay, recovery codes |
-| `security/scenarios.test.ts` | 139 | All 14 RULE 222 scenarios + supporting controls |
-| **Server total** | **713** | |
-| `client` (vitest) | 64 | Token storage, CSRF header, refresh/retry, open-redirect guard, record formatters, workspace API unwrapping |
-| **Combined** | **777** | |
+| `security/mfa.test.ts` | 71 | Secret encryption at rest, three-legged enrollment, anti-replay, recovery codes |
+| `security/scenarios.test.ts` | 166 | All 14 RULE 222 scenarios + supporting controls |
+| **Server total** | **838** | |
+| `client` (vitest) | 129 | Token storage, CSRF header, refresh/retry, open-redirect guard, record formatters, workspace API unwrapping, calendar + members pages |
+| **Combined** | **967** | |
 
 `unit/mongodb.test.ts` is skipped, not silently absent: the MongoDB provider was
 removed on 2026-10-11 and the runner derives its skip list from
@@ -383,8 +387,8 @@ deferred, so every row names what *is* already in place.
 
 Stated plainly so nothing here reads as production-ready when it is not.
 
-**Verified** (each by execution, see §1 and §1a): typecheck, lint, 713 server
-assertions, 64 client assertions, real PostgreSQL 17.11 via the `pg` pool, the
+**Verified** (each by execution, see §1 and §1a): typecheck, lint, 838 server
+assertions, 129 client tests, real PostgreSQL 17.11 via the `pg` pool, the
 whole suite inside a container, the production image build, the production
 container boot and serving, end-to-end auth, header injection over raw TCP,
 migration idempotency, all five database TLS paths, backup/restore drill,
@@ -468,8 +472,8 @@ reports + custom fields + import/export/upload all verified live.
 | `server/src/routes/v1/` | `auth.ts`, `mfa.ts`, `org.ts`, `records.ts`, `health.ts`, `cookies.ts`, `helpers.ts`, `index.ts` |
 | `server/src/app.ts` - `src/index.ts` | Middleware assembly; entrypoint with graceful shutdown and retention scheduler |
 | `server/src/integrations/` | `email.ts`; ~~`mongodb.ts`~~ **REMOVED** (commented out, excluded, dependency dropped) |
-| `server/src/tests/` | 10 suites, **549 assertions** |
-| `client/` | React 18 + Vite; 39 vitest assertions including the open-redirect guard |
+| `server/src/tests/` | 20 suites, **838 assertions** |
+| `client/` | React 18 + Vite; 129 vitest tests including the open-redirect guard |
 | `docs/` | 15 documents |
 | `eslint.config.mjs` | Type-aware flat config; `npm run lint` exits 0 |
 | `server/.env.example` | Every variable documented, including `DATABASE_SSL` |
@@ -495,8 +499,8 @@ reports + custom fields + import/export/upload all verified live.
 
 What is genuinely done: the API builds, boots in production mode against a real
 TLS PostgreSQL, serves a real route surface with MFA, records, reports, custom
-fields, attachments and import/export, and passes **713 server assertions plus
-64 client assertions** -- including 14 end-to-end attack scenarios, 128
+fields, attachments and import/export, and passes **838 server assertions plus
+129 client tests** -- including 14 end-to-end attack scenarios, 128
 assertions observed over an actual socket, and the entire suite re-run inside a
 container against a real database. ESLint is clean, the image carries **0
 critical and 0 high** Trivy findings, ZAP raises nothing above Informational

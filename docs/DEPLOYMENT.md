@@ -14,7 +14,7 @@ and no AWS credentials, so none of it could be built or verified.
 
 ```bash
 npm install
-npm test # 549 assertions, real PostgreSQL via PGlite
+npm test # 838 assertions, real PostgreSQL via PGlite
 cp server/.env.example server/.env
 # set the secrets marked REQUIRED
 npm run migrate

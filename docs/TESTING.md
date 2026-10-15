@@ -3,8 +3,8 @@
 ## Run
 
 ```bash
-npm test # all suites -- 549 assertions
-npm run test:security # the 14 RULE 222 scenarios only -- 137 assertions
+npm test # all suites -- 838 assertions
+npm run test:security # the 14 RULE 222 scenarios only -- 166 assertions
 npm run typecheck # tsc --noEmit, strict + noUncheckedIndexedAccess -- 0 errors
 ```
 
@@ -23,28 +23,29 @@ clean database, then reports only results it observed (RULE 5).
 ## Current results
 
 ```
-PASS unit/config.test.ts 19 assertions
-PASS unit/modules.test.ts 54 assertions
-PASS unit/rbac.test.ts 26 assertions
-PASS integration/auth.test.ts 26 assertions
-PASS integration/http-mfa.test.ts 28 assertions
-PASS integration/http.test.ts 100 assertions
-PASS integration/records.test.ts 76 assertions
-PASS integration/retention.test.ts 17 assertions
-PASS security/mfa.test.ts 64 assertions
-PASS security/scenarios.test.ts 139 assertions
 SKIPPED (excluded from tsconfig): unit/mongodb.test.ts
+Running 20 suite(s)
 PASS unit/config.test.ts 19 assertions
-PASS unit/modules.test.ts 54 assertions
+PASS unit/kms.test.ts 10 assertions
+PASS unit/modules.test.ts 75 assertions
 PASS unit/rbac.test.ts 26 assertions
+PASS integration/activity.test.ts 16 assertions
 PASS integration/auth.test.ts 26 assertions
+PASS integration/calendar.test.ts 53 assertions
 PASS integration/http-mfa.test.ts 28 assertions
+PASS integration/http-routes.test.ts 31 assertions
 PASS integration/http.test.ts 100 assertions
-PASS integration/records.test.ts 76 assertions
-PASS integration/retention.test.ts 17 assertions
-PASS security/mfa.test.ts 64 assertions
-PASS security/scenarios.test.ts 139 assertions
-TOTAL: 549 assertions passed, 0 failed across 549 assertions
+PASS integration/item8.test.ts 33 assertions
+PASS integration/members.test.ts 26 assertions
+PASS integration/queue.test.ts 20 assertions
+PASS integration/readOnly.test.ts 7 assertions
+PASS integration/records.test.ts 84 assertions
+PASS integration/reports.test.ts 15 assertions
+PASS integration/retention.test.ts 20 assertions
+PASS integration/savedViews.test.ts 12 assertions
+PASS security/mfa.test.ts 71 assertions
+PASS security/scenarios.test.ts 166 assertions
+TOTAL: 838 assertions passed, 0 failed across 20 suites
 ```
 
 ## Environment
@@ -66,14 +67,17 @@ SQLite-only DDL defect and my own composite-FK ordering bug.
 src/tests/
  run.ts runner (fresh process per suite)
  unit/config.test.ts 19 -- production config fail-closed, TLS posture, CA handling
- unit/modules.test.ts 54 -- every module loads; disabled sources inert; no secret literals
+ unit/kms.test.ts 10 -- envelope encryption; rekey between env and kms backends
+ unit/modules.test.ts 75 -- every module loads; disabled sources inert; no secret literals
  unit/rbac.test.ts 26 -- permission matrix, hierarchy, invariants
  integration/auth.test.ts 26 -- register, login, lockout, sessions, token reuse
+ integration/calendar.test.ts 53 -- agenda, meetings, invitees, invites inbox
  integration/http.test.ts 100 -- headers/CORS/CSRF/cookies/errors over a real socket
  integration/http-mfa.test.ts 28 -- MFA enrollment and login challenge over HTTP
- integration/records.test.ts 76 -- records, tenant isolation, transactional conversion
- integration/retention.test.ts 17 -- batched purge; audit rows never deleted
- security/scenarios.test.ts 137 -- 14 RULE 222 scenarios + 21 controls
+ integration/members.test.ts 26 -- in-house account creation, role bounds, permission gate
+ integration/records.test.ts 84 -- records, tenant isolation, transactional conversion
+ integration/retention.test.ts 20 -- batched purge; audit rows never deleted
+ security/scenarios.test.ts 166 -- 14 RULE 222 scenarios + supporting controls
 ```
 
 ## Branch coverage -- wired 2026-10-14
@@ -88,7 +92,7 @@ Measured at wiring (all suites green):
 | Workspace | Lines | Functions | Branches | Statements | Thresholds (fail build below) |
 |---|---|---:|---:|---:|---|
 | server (c8, 18 suites, PGlite) | 87.1 | 77.1 | 72.3 | 87.1 | 85 / 75 / 70 / 85 |
-| client (v8, 118 tests) | 47.4 | 63.1 | 74.6 | 47.4 | 46 / 62 / 74 / 46 |
+| client (v8, 129 tests) | 54.1 | 62.3 | 74.9 | 54.1 | 46 / 62 / 74 / 46 |
 
 Notes, stated plainly:
 

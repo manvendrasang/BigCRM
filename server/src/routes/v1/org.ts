@@ -11,6 +11,7 @@ import { asyncRoute, actorRef, intParam, strParam } from './helpers.ts';
 import { authenticate, requirePermission, requireRole, csrfGuard, sensitiveActionWindow } from '../../middleware/security.ts';
 import {
  getOrganization, updateOrganization, listMembers, changeMemberRole, removeMember,
+ createMember,
  inviteMember, acceptInvite, previewInvite, revokeInvitation, listInvitations,
  listTeams, createTeam, transferOwnership, assignableRoles,
 } from '../../services/org.ts';
@@ -97,6 +98,37 @@ orgRouter.get('/roles', requirePermission('organization.read'), asyncRoute(async
 
 orgRouter.get('/members', requirePermission('users.read'), asyncRoute(async (req, res) => {
  res.json({ data: await listMembers(actorRef(req)) });
+}));
+
+/**
+ * In-house member creation. The caller supplies an email and a role; the
+ * service generates a password and returns it ONCE. There is no self-service
+ * registration on this deployment (accounts are created by the office, not
+ * claimed from the internet), so this endpoint and the invitation flow are
+ * the only ways in.
+ *
+ * Ownership is deliberately absent from the schema: it is never minted, only
+ * moved by members.transfer_ownership. The service applies the same rank rule
+ * again, so a manager cannot ask for a role they could not grant.
+ */
+const CREATABLE_ROLES = ['admin', 'manager', 'sales', 'viewer'] as const;
+
+const createMemberSchema = z.object({
+ email: z.string().trim().min(3).max(320).email(),
+ role: z.enum(CREATABLE_ROLES),
+ name: z.string().trim().min(1).max(120).optional(),
+});
+
+orgRouter.post('/members', csrfGuard, requirePermission('users.create'),
+ sensitiveActionWindow, asyncRoute(async (req, res) => {
+ const parsed = createMemberSchema.safeParse(req.body);
+ if (!parsed.success) throw validationFailed(fieldErrors(parsed.error));
+ const result = await createMember(actorRef(req), {
+   email: parsed.data.email,
+   role: parsed.data.role,
+   name: parsed.data.name,
+ });
+ res.status(201).json({ data: result });
 }));
 
 const rolePatch = z.object({ role: z.enum(ROLES) });

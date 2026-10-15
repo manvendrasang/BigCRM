@@ -248,3 +248,59 @@ export async function listMyInvites(status?: 'invited' | 'accepted' | 'declined'
  const body = await api.get<unknown>(`/calendar/invites${qs}`);
  return Array.isArray(body) ? (body as MyInvite[]) : [];
 }
+
+export interface MemberRow {
+ userId: string;
+ email: string;
+ name: string;
+ role: string;
+ status: string;
+ mfaEnabled: boolean;
+ lastLoginAt: string | null;
+}
+
+export interface CreatedMember {
+ user: { id: string; email: string; name: string; emailVerified: boolean; mfaEnabled: boolean };
+ membershipRole: string;
+ generatedPassword: string;
+}
+
+export async function listMembers(): Promise<MemberRow[]> {
+ const body = await api.get<unknown>('/org/members');
+ return Array.isArray(body) ? (body as MemberRow[]) : [];
+}
+
+export interface RoleOptions {
+ assignable: string[];
+ hierarchy: string[];
+ note?: string;
+}
+
+/**
+ * Roles the current actor may grant. The server combines permission
+ * (`users.invite`) with the rank rule, so the client does not restate RBAC --
+ * an empty `assignable` means the actor may not create members at all.
+ */
+export async function listAssignableRoles(): Promise<RoleOptions> {
+ const body = await api.get<unknown>('/org/roles');
+ if (typeof body !== 'object' || body === null) return { assignable: [], hierarchy: [] };
+ const b = body as Partial<RoleOptions>;
+ return {
+ assignable: Array.isArray(b.assignable) ? b.assignable : [],
+ hierarchy: Array.isArray(b.hierarchy) ? b.hierarchy : [],
+ note: typeof b.note === 'string' ? b.note : undefined,
+ };
+}
+
+/**
+ * In-house member creation. The generated password is returned once by the
+ * server and never again -- it is the admin's job to deliver it. Copy it now:
+ * closing this panel loses it.
+ */
+export async function createMember(input: {
+ email: string;
+ role: string;
+ name?: string;
+}): Promise<CreatedMember> {
+ return api.post<CreatedMember>('/org/members', input);
+}

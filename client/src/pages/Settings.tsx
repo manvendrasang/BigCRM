@@ -9,7 +9,7 @@
  * blank page -- the user should know the feature exists and why they cannot
  * use it, not wonder whether the page is broken.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ApiError } from '../lib/api';
 import {
  createFieldDef,
@@ -21,6 +21,8 @@ import {
 } from '../lib/item8';
 import type { CustomFieldDef, ImportResult } from '../lib/item8';
 import { EmptyState, Section, useConfirm } from '../components/ui';
+import { createMember, listAssignableRoles, listMembers } from '../lib/workspace';
+import type { CreatedMember, MemberRow } from '../lib/workspace';
 
 const ENTITY_TYPES = ['contact', 'company', 'lead', 'deal', 'task'] as const;
 const EXPORTABLE = ['contacts', 'companies', 'leads', 'deals', 'tasks'] as const;
@@ -33,8 +35,9 @@ export function Settings(): JSX.Element {
  return (
  <div>
  <h1>Settings</h1>
- <p className="muted">Custom fields and data transfer for your workspace.</p>
+ <p className="muted">Custom fields, data transfer and workspace members.</p>
  <CustomFieldsSection />
+ <MembersSection />
  <TransfersSection />
  </div>
  );
@@ -339,5 +342,172 @@ function TransfersSection(): JSX.Element {
  </div>
  )}
  </Section>
+ );
+}
+
+function MembersSection(): JSX.Element {
+ const [members, setMembers] = useState<MemberRow[]>([]);
+ // Roles the server says this actor may grant. Empty means "no authority to
+ // create members", which is the same gate the endpoint enforces.
+ const [assignable, setAssignable] = useState<string[]>([]);
+ const [email, setEmail] = useState('');
+ const [name, setName] = useState('');
+ const [role, setRole] = useState('');
+ const [error, setError] = useState<string | null>(null);
+ const [forbidden, setForbidden] = useState(false);
+ const [busy, setBusy] = useState(false);
+ const [created, setCreated] = useState<CreatedMember | null>(null);
+
+ // Least-privileged grantable role until the user picks one. The select is
+ // bound to this, so an untouched form never submits an ungrantable role.
+ const selectedRole = assignable.includes(role)
+ ? role
+ : (assignable[assignable.length - 1] ?? '');
+
+ const load = useCallback(async () => {
+  setError(null);
+  setForbidden(false);
+  try {
+   setMembers(await listMembers());
+  } catch (err) {
+   if (err instanceof ApiError && err.status === 403) setForbidden(true);
+   else setError(err instanceof ApiError ? err.message : 'Could not load members.');
+   setMembers([]);
+  }
+  // A non-admin is refused here too; that is not an error worth showing, it
+  // simply means the create form stays hidden.
+  try {
+   setAssignable((await listAssignableRoles()).assignable);
+  } catch {
+   setAssignable([]);
+  }
+ }, []);
+
+ useEffect(() => {
+  void load();
+ }, [load]);
+
+ async function create(e: React.FormEvent): Promise<void> {
+  e.preventDefault();
+  if (!email.trim() || !selectedRole) return;
+  setBusy(true);
+  setError(null);
+  setCreated(null);
+  try {
+   const result = await createMember({
+    email: email.trim(),
+    role: selectedRole,
+    name: name.trim() || undefined,
+   });
+   setCreated(result);
+   setEmail('');
+   setName('');
+   setRole('');
+   await load();
+  } catch (err) {
+   setError(err instanceof ApiError ? err.message : 'Could not create the member.');
+  } finally {
+   setBusy(false);
+  }
+ }
+
+ return (
+  <Section title="Members">
+   <p className="muted">
+    People in this workspace. Accounts are created here -- there is no public signup -- and the
+    generated password is shown once, for you to hand over.
+   </p>
+
+   {forbidden && (
+    <p className="muted">You need the users permission to view members. Ask an admin.</p>
+   )}
+   {error !== null && (
+    <p className="alert alert-error" role="alert">{error}</p>
+   )}
+
+   {created && (
+    <div className="alert" role="status">
+     <strong>Account created for {created.user.email}</strong>
+     <p className="muted">
+      Copy the password now and hand it to the member over a secure channel. It is not stored and
+      cannot be shown again.
+     </p>
+     <p><strong>Email:</strong> {created.user.email}</p>
+     <p><strong>Password:</strong> <code>{created.generatedPassword}</code></p>
+     <p><strong>Role:</strong> {created.membershipRole}</p>
+     <button type="button" className="btn btn-secondary btn-sm" onClick={() => setCreated(null)}>
+      Dismiss
+     </button>
+    </div>
+   )}
+
+   {!forbidden && (members.length === 0 ? (
+    <EmptyState message="No members yet." />
+   ) : (
+    <div className="table-wrap">
+     <table className="records">
+      <thead>
+       <tr>
+        <th scope="col">Name</th>
+        <th scope="col">Email</th>
+        <th scope="col">Role</th>
+        <th scope="col">MFA</th>
+        <th scope="col">Last login</th>
+       </tr>
+      </thead>
+      <tbody>
+       {members.map((m) => (
+        <tr key={m.userId}>
+         <td>{m.name}</td>
+         <td>{m.email}</td>
+         <td>{m.role}</td>
+         <td>{m.mfaEnabled ? 'On' : 'Off'}</td>
+         <td>{m.lastLoginAt ? new Date(m.lastLoginAt).toLocaleString() : 'Never'}</td>
+        </tr>
+       ))}
+      </tbody>
+     </table>
+    </div>
+   ))}
+
+   {!forbidden && assignable.length > 0 && (
+    <form onSubmit={(e) => { void create(e); }}>
+     <h3 className="subsection-title">Create member</h3>
+     <div className="form-grid">
+      <label className="field">
+       <span>Email</span>
+       <input
+        type="email"
+        value={email}
+        required
+        onChange={(e) => setEmail(e.target.value)}
+       />
+      </label>
+      <label className="field">
+       <span>Name</span>
+       <input
+        type="text"
+        value={name}
+        maxLength={120}
+        onChange={(e) => setName(e.target.value)}
+       />
+      </label>
+      <label className="field">
+       <span>Role</span>
+       <select value={selectedRole} onChange={(e) => setRole(e.target.value)}>
+        {assignable.map((r) => (
+         <option key={r} value={r}>{r}</option>
+        ))}
+       </select>
+      </label>
+     </div>
+     <div className="form-actions">
+      <button type="submit" className="btn btn-primary" disabled={busy || !email.trim()}>
+       {busy ? 'Creating...' : 'Create member'}
+      </button>
+     </div>
+    </form>
+   )}
+  </Section>
  );
 }

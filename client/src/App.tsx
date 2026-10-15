@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthenticatedShell } from './components/AuthenticatedShell';
 import { Login } from './pages/Login';
-import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { RecordList } from './pages/records/RecordList';
 import { RecordDetail } from './pages/records/RecordDetail';
@@ -54,7 +53,6 @@ export function App(): JSX.Element {
  <Routes>
  <Route path="/" element={<Navigate to="/dashboard" replace />} />
  <Route path="/login" element={<Login />} />
- <Route path="/register" element={<Register />} />
  <Route path="/dashboard" element={shelled(<Dashboard />)} />
  <Route path="/search" element={shelled(<GlobalSearch />)} />
  <Route path="/reports" element={shelled(<Reports />)} />
