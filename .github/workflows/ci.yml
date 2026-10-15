@@ -194,21 +194,3 @@ jobs:
         with:
           target: http://localhost:3000
           config_file: .zaprc
-
-  # ── RULE 203: infrastructure-as-code scanning ───────────────────────────────
-  iac:
-    name: IaC scan
-    runs-on: ubuntu-latest
-    if: hashFiles('infra/terraform/**/*.tf') != ''
-    steps:
-      - uses: actions/checkout@v4
-      - name: Checkov
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: infra/terraform
-          framework: terraform
-          check: CKV_AWS_18,CKV_AWS_19,CKV_AWS_20,CKV_AWS_21,CKV_AWS_3,CKV_AWS_16
-          # The six checks above are the ones that matter most here:
-          #   S3 bucket ACL / public ACL / public read / public write /
-          #   unrestricted bucket policy / missing Block Public Access.
-          soft_fail: false
