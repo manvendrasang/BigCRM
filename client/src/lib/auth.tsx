@@ -97,12 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
  const [isLoading, setIsLoading] = useState(true);
  const [error, setError] = useState<string | null>(null);
 
- // `api` escalates to `onUnauthenticated` when a 401 cannot be recovered by a
- // refresh. The default handler performs a full `location.assign`, which tears
- // down the document: the provider remounts, re-probes `/auth/me`, 401s again,
- // and reloads forever. That is the login-page redirect loop. Handling it in
- // React instead clears the session and lets `ProtectedRoute` render a
- // client-side `<Navigate>` -- no reload, and the router keeps its state.
+ // `api` escalates to `onUnauthenticated` when a 401 cannot be recovered. The
+ // default handler does a full `location.assign`, which tears down the document:
+ // the provider remounts, re-probes `/auth/me`, 401s again, reloads forever. That
+ // is the login-page redirect loop. Handling it in React instead clears the
+ // session so `ProtectedRoute` can `<Navigate>` client-side, keeping router state.
  useEffect(() => {
  setUnauthenticatedHandler(() => {
  setUser(null);
@@ -117,13 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
  useEffect(() => {
  let cancelled = false;
 
- // A tab that booted after the window was closed must not reuse the session the
- // dead window left behind. `initSessionWindow` has already fired the logout
- // beacon; probing `/auth/me` here would race it (the cookie stays valid for a
- // few more milliseconds), so the dashboard could render and then vanish.
- // Short-circuiting the probe does not soften the sign-out -- the server
- // revokes the session regardless; it only avoids displaying a session that is
- // already over.
+ // A tab that booted after the window closed must not reuse the dead window's
+ // session. `initSessionWindow` has already fired the logout beacon, so probing
+ // here would race it -- the cookie stays valid a few more milliseconds and the
+ // dashboard could render then vanish. Skipping the probe does not soften the
+ // sign-out (the server revokes regardless); it only avoids showing it.
  if (wasSignedOutOnOpen()) {
  clearTokens();
  setUser(null);
@@ -132,17 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
  return;
  }
 
- // `void` + an explicit catch: without this the IIFE's rejection is an
- // unhandled promise rejection, which in a browser surfaces as a console error
- // and leaves `isLoading` stuck true forever.
+ // `void` + an explicit catch: without it the rejection is unhandled, which
+ // logs to the console and leaves `isLoading` stuck true forever.
  void (async () => {
  try {
  const me = await api.get<MeResponse>('/auth/me', { skipRefresh: false });
  if (cancelled) return;
  setUser(me.user);
  setActor(toActor(me));
- // The cookie outlived the page (a refresh, or the tab was never closed), so a
- // session is live again and a future tab close has to end it.
+ // The cookie outlived the page, so a session is live and a future tab close
+ // must end it.
  markSessionActive();
  } catch {
  // No usable session. Not an error worth showing on first paint.

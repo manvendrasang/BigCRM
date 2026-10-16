@@ -11,7 +11,7 @@ import cors, { type CorsOptions } from 'cors';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { env } from '../config/env.ts';
 import { logger, securityLog } from '../lib/logger.ts';
-import { AppError, forbidden, tooMany, unauthorized } from '../lib/errors.ts';
+import { AppError, forbidden, unauthorized } from '../lib/errors.ts';
 import { loggableIp } from '../lib/ip.ts';
 import { can, isRole, type Role } from '../services/rbac.ts';
 import { validateSession, type Actor } from '../services/auth.ts';
@@ -36,16 +36,13 @@ declare global {
 //  request id + client IP (RULE 171) 
 export function requestContext(req: express.Request, res: express.Response, next: express.NextFunction): void {
  // Honour an upstream id only if it looks like one, so log injection cannot
- // smuggle newlines or fake correlation ids.
+ // smuggle newlines or a fake correlation id.
  const inbound = String(req.get('x-request-id') ?? '');
  req.requestId = /^[A-Za-z0-9_-]{8,64}$/.test(inbound) ? inbound : randomUUID();
  res.setHeader('X-Request-Id', req.requestId);
- // The RAW address, not a masked one. `req.clientIp` is written into `inet`
- // columns (sessions.ip, audit_logs.ip, users.last_login_ip), and `inet`
- // rejects the masked form `127.0.0.*` with 22P02 -- which made login fail on
- // every single request. Masking belongs in logs and metrics, not in the
- // database: an audit trail that stores `127.0.0.*` cannot answer the only
- // question it exists to answer. See src/lib/ip.ts.
+ // The RAW address: it is written into `inet` columns, which reject the masked
+ // form `127.0.0.*` with 22P02 -- masking here made login fail on every request.
+ // Mask in logs and metrics instead. See src/lib/ip.ts.
  req.clientIp = String(req.ip ?? req.socket.remoteAddress ?? 'unknown');
  req.loggableIp = loggableIp(req.clientIp);
  const start = process.hrtime.bigint();
@@ -71,9 +68,9 @@ export function securityHeaders(_req: express.Request, res: express.Response, ne
  const csp = [
  "default-src 'self'",
  "script-src 'self'",
- // React writes some inline styles, so style-src needs 'unsafe-inline'.
- // This is documented in docs/SECURITY_ARCHITECTURE.md §CSP as the single
- // accepted relaxation; script-src and object-src remain strict.
+ // React writes inline styles, so style-src needs 'unsafe-inline' -- the single
+ // accepted relaxation (docs/SECURITY_ARCHITECTURE.md §CSP). script-src and
+ // object-src stay strict.
  "style-src 'self' 'unsafe-inline'",
  "img-src 'self' data: blob:",
  "font-src 'self' data:",
@@ -88,23 +85,16 @@ export function securityHeaders(_req: express.Request, res: express.Response, ne
  ...(env.nodeEnv === 'production' ? ['upgrade-insecure-requests'] : []),
  ].join('; ');
 
- //  Headers we set ourselves MUST be set BEFORE helmet runs. 
+ // Headers we set ourselves MUST be set BEFORE helmet runs.
  //
- // `helmet(opts)(req, res, next)` calls `next()` synchronously inside its own
- // middleware chain, so the entire downstream stack -- including the route
- // handler that calls res.end() -- has already finished by the time the call
- // returns. Any setHeader() placed after it therefore operates on a response
- // that has already been sent.
- //
- // That is exactly what this function did. Consequences, all silent until the
- // middleware was exercised over a real socket:
- // - `Permissions-Policy` was never applied to any response.
- // - `res.setHeader` threw ERR_HTTP_HEADERS_SENT on every single request.
- // Combined with the `uncaughtException` handler in index.ts -- which exits
- // the process by design -- the first request would have taken the API down.
- //
- // Typecheck could not see it and unit tests could not reach it. Only booting
- // the app and looking at the bytes on the wire exposed it.
+ // `helmet(opts)` calls `next()` synchronously inside its own chain, so the whole
+ // downstream stack has finished by the time it returns and any `setHeader`
+ // after it operates on a sent response. That is what this function used to do:
+ // `Permissions-Policy` was never applied and `setHeader` threw
+ // ERR_HTTP_HEADERS_SENT on every request, which combined with the
+ // process-exiting `uncaughtException` handler would have taken the API down on
+ // the first request. Typecheck could not see it and unit tests could not reach
+ // it; only real bytes on the wire exposed it.
  res.setHeader(
  'Permissions-Policy',
  'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
@@ -204,14 +194,6 @@ export const authAccountLimiter = limiter({
 export const searchLimiter = limiter({
  windowMs: env.rateLimit.authWindowMs, max: env.rateLimit.searchMax,
  bucket: 'search', message: 'Too many searches. Please wait a moment.',
-});
-export const exportLimiter = limiter({
- windowMs: env.rateLimit.authWindowMs, max: env.rateLimit.exportMax,
- bucket: 'export', message: 'Export limit reached. Please wait before starting another.',
-});
-export const uploadLimiter = limiter({
- windowMs: env.rateLimit.authWindowMs, max: env.rateLimit.uploadMax,
- bucket: 'upload', message: 'Upload limit reached.',
 });
 /** Security-sensitive endpoints require a fresh session (RULE 116). */
 export const sensitiveActionWindow = limiter({
@@ -382,5 +364,4 @@ export function errorHandler(
  res.status(status).json(body);
 }
 
-export const rateLimitError = tooMany;
 export { readOnlyGuard } from './readOnly.ts';

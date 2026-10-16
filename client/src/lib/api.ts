@@ -1,39 +1,27 @@
 /**
- * BigCRM API client -- the security boundary between the browser and the API.
+ * BigCRM API client -- the security boundary between browser and API. The rules
+ * enforced here (mirroring the server's RULE 30/38):
  *
- * Design rules enforced here (mirroring the server's RULE 30/38):
- *
- * 1. **Tokens live in memory only.** The access token is kept in a module-scoped
- * variable and is deliberately never written to `localStorage`,
- * `sessionStorage`, IndexedDB, or a JS-readable cookie. Any of those survive
- * the tab closing and is readable by *any* script on the origin, so a single
- * XSS payload or a malicious/compromised npm dependency can exfiltrate a
- * long-lived credential and replay it from the attacker's own machine. An
- * in-memory value dies with the tab, is invisible to `document.cookie`, and
- * is unreachable from injected script that runs before our bundle does. The
- * refresh token is never held in JS at all: the server keeps it in an
- * `HttpOnly` cookie, so script -- ours or an attacker's -- cannot read it.
- *
- * 2. **Credentials are `same-origin`, never `include`.** The app is served from
- * the same origin as the API behind the dev proxy, so `same-origin` is
- * sufficient for the session cookie to flow. `include` would additionally
- * attach the cookie to cross-site requests, which combined with
- * `Access-Control-Allow-Credentials` on a permissive origin allowlist is the
- * classic CSRF data-exfiltration setup. We never need it, so we do not use it.
- *
- * 3. **CSRF.** The double-submit token lives in a *non*-`HttpOnly` cookie
- * (readable by us by design) and is echoed back in `X-CSRF-Token` on every
- * state-changing request. Cross-site attackers can cause the cookie to be
- * sent but cannot read it to populate the header, and setting the header from
- * a cross-origin page triggers a preflight our allowlist rejects.
- *
+ * 1. **Tokens live in memory only.** The access token is module-scoped and
+ *    never written to `localStorage`, `sessionStorage`, IndexedDB or a
+ *    JS-readable cookie: any of those survives the tab and is readable by any
+ *    script on the origin, so one XSS payload or compromised dependency could
+ *    exfiltrate a long-lived credential and replay it elsewhere. An in-memory
+ *    value dies with the tab and is invisible to `document.cookie`. The refresh
+ *    token is never in JS at all -- the server keeps it `HttpOnly`.
+ * 2. **Credentials are `same-origin`, never `include`.** The client is served
+ *    from the API's origin behind the dev proxy, so `same-origin` suffices.
+ *    `include` would attach the session cookie to cross-site requests, which
+ *    with `Access-Control-Allow-Credentials` on a permissive allowlist is the
+ *    classic CSRF exfiltration setup. We never need it.
+ * 3. **CSRF.** The double-submit token lives in a non-`HttpOnly` cookie (readable
+ *    by us by design) and is echoed in `X-CSRF-Token` on state-changing
+ *    requests. A cross-site attacker can cause the cookie to be sent but cannot
+ *    read it, and setting the header cross-origin triggers a rejected preflight.
  * 4. **Bounded, single retry.** A 401 triggers at most one refresh and one
- * retry of the original request, so a server that persistently 401s cannot
- * produce a refresh storm or an infinite loop.
- *
- * 5. **Nothing sensitive is ever logged or surfaced.** No request/response
- * bodies, headers, or tokens are logged. Errors carry a status, a safe code,
- * and a safe message -- never the raw response body.
+ *    retry, so a persistently-401 server cannot produce a refresh storm.
+ * 5. **Nothing sensitive is logged or surfaced.** No bodies, headers or tokens;
+ *    errors carry a status, a safe code and a safe message.
  */
 
 /** Base path for every API call. Kept relative so requests stay same-origin. */
@@ -288,16 +276,13 @@ async function refreshSession(): Promise<boolean> {
  });
  if (!response.ok) return false;
 
- // The server returns the NEW access token in the body as well as
- // setting the cookie. Both must be adopted: `authenticate` prefers the
- // `Authorization` header over the cookie, so leaving a stale token in
- // memory would override the freshly-minted cookie on the retry and 401
- // again -- logging the user out every access-token TTL (15 min by
- // default) despite a perfectly valid refresh cookie.
+ // Both the new body token and the cookie must be adopted: `authenticate`
+ // prefers the header, so a stale in-memory token would override the fresh
+ // cookie and 401 again -- signing the user out every access-token TTL despite
+ // a valid refresh cookie.
  //
- // The body is read defensively: a refresh that succeeds but returns an
- // unreadable shape still leaves a valid cookie, and the cookie path
- // alone keeps the session alive.
+ // Read defensively: a successful refresh returning an unreadable shape still
+ // leaves a valid cookie, and the cookie path alone keeps the session alive.
  try {
  const body = (await response.json()) as { data?: { accessToken?: unknown } };
  const token = body?.data?.accessToken;
@@ -368,7 +353,7 @@ async function toApiError(response: Response): Promise<ApiError> {
  const { status } = response;
 
  // 5xx messages are replaced wholesale: internal detail must never reach the
- // browser (server RULE 120), and a proxy error page may contain anything.
+ // browser (RULE 120), and a proxy error page may contain anything.
  if (status >= 500) {
  return new ApiError(status, 'SERVER_ERROR', 'Something went wrong. Please try again.');
  }
@@ -380,8 +365,8 @@ async function toApiError(response: Response): Promise<ApiError> {
  const body: unknown = await response.json();
  if (typeof body === 'object' && body !== null) {
  const record = body as Record<string, unknown>;
- // Only two fields are ever lifted out, and only when they are the
- // expected primitives. Everything else in the body is discarded.
+ // Only `code` and `message` are lifted, and only when they are the expected
+ // primitives. Everything else in the body is discarded.
  if (typeof record['code'] === 'string' && /^[A-Z0-9_]{1,64}$/.test(record['code'])) {
  code = record['code'];
  }
@@ -434,8 +419,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
  // Rule 2: a bearer token is sent when we hold one; the cookie is the fallback.
  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
- // Rule: every request is time-boxed so a hung socket cannot leak resources or
- // wedge the UI indefinitely. The caller's signal is honoured alongside it.
+ // Every request is time-boxed so a hung socket cannot wedge the UI; the caller's
+ // signal is honoured alongside it.
  const controller = new AbortController();
  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
  const external = options.signal;
@@ -480,8 +465,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
  if (controller.signal.aborted) {
  throw new ApiError(0, 'TIMEOUT', 'The request timed out. Please try again.');
  }
- // Deliberately terse: the underlying message could contain a URL or header
- // value, and nothing here should ever surface to the UI or a log.
+ // Deliberately terse: the underlying message could contain a URL or header.
  throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server. Please try again.');
  } finally {
  clearTimeout(timer);

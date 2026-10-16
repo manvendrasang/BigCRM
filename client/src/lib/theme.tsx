@@ -11,27 +11,18 @@ import { useAuth } from './auth';
 import { fetchThemePreference, saveThemePreference } from './preferences';
 
 /**
- * Appearance preference: explicit light, explicit dark, or follow the OS.
+ * Appearance preference: light, dark, or follow the OS.
  *
- * The account owns this preference, not the browser. That is the whole point of
- * the design and it is worth stating why, because the previous implementation
- * used localStorage and looked fine to its author:
+ * The account owns it, not the browser. A browser-scoped preference (the
+ * previous implementation) paints the login screen in whatever theme the last
+ * person left behind, and since the session now dies with the window, browser
+ * storage is the one thing that would survive on a shared desk.
  *
- * * The login screen has to be neutral. With a browser-scoped preference, the
- *   page a stranger sees before authenticating is painted in whatever theme the
- *   last person left behind.
- * * The preference has to outlive the session. Closing the window signs you out
- *   (see sessionWindow.ts), so browser storage is the one thing that would
- *   survive a shared machine -- which is precisely what must not happen.
- *
- * So: `theme-init.js` paints **light** before the first frame regardless of what
- * was chosen before, and the stored preference is applied once the caller is
- * authenticated. On a fresh sign-in that is the requested sequence -- light, then
- * the account's own theme -- and a person who never chose anything simply keeps
- * light.
- *
- * The flip is applied without touching React's render path for unauthenticated
- * pages, so nothing about the theme depends on a network request succeeding.
+ * So `theme-init.js` paints light before the first frame regardless, and the
+ * stored preference is applied only once the caller is authenticated. An account
+ * that never chose one keeps light rather than following the OS. The flip does
+ * not touch the render path for unauthenticated pages, so nothing about the
+ * theme depends on a network request succeeding.
  */
 export type ThemePreference = 'light' | 'dark' | 'system';
 

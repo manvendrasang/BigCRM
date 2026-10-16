@@ -92,6 +92,3 @@ export const containsFormula = (v: string): boolean => {
  const s = String(v ?? '');
  return s.length > 0 && (FORMULA_TRIGGERS.has(s[0]!) || /^[\s]*[=+\-@]/.test(s));
 };
-
-/** Stable, non-semantic value for a spreadsheet column of "true"/"false". */
-export const csvBool = (v: unknown): string => (v ? 'true' : 'false');

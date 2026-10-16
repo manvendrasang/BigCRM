@@ -133,10 +133,3 @@ export function assertUpload(v: UploadVerdict): asserts v is { ok: true; kind: A
  throw badRequest(v.reason);
 }
 
-/**
- * Opaque, unguessable object key (RULE 50). Never derived from a user-supplied
- * name, and always prefixed with the organization id so a leaked key is still
- * useless without an authorization check.
- */
-export const objectKeyFor = (orgId: string, fileId: string, ext: string): string =>
- `organizations/${orgId}/documents/${fileId}${ext}`;

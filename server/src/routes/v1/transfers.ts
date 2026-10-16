@@ -1,20 +1,19 @@
 /**
  * Import / export routes.
  *
- * Export is admin+ only (`exports.manage`): it dumps whole tables, so
- * member-level export would be bulk exfiltration with a button on it. Import
- * is `imports.manage` for the symmetric reason -- bulk creation bypasses the
+ * Export is admin+ (`exports.manage`): it dumps whole tables, so member-level
+ * export would be bulk exfiltration with a button on it. Import is
+ * `imports.manage` for the symmetric reason -- bulk creation bypasses the
  * per-record UI and its human review.
  *
- * Export returns the job row; the client polls nothing because the transfer
- * completes synchronously for any table under the row cap. Download is a
- * separate `GET` on the job id so the bytes and the metadata have different
- * cache and audit characteristics.
+ * Export returns the job row; nothing is polled because the transfer completes
+ * synchronously under the row cap. Download is a separate `GET` on the job id
+ * so bytes and metadata have different cache and audit characteristics.
  *
- * Import accepts the CSV as the raw request body (`text/csv` or `text/plain`),
- * for the same reason uploads avoid multipart: one bounded body, no parser to
- * confuse. `X-Entity-Type` names the target; `X-Idempotency-Key` is optional
- * but recommended.
+ * Import takes the CSV as the raw body (`text/csv` or `text/plain`) for the same
+ * reason uploads avoid multipart: one bounded body, no parser to confuse.
+ * `X-Entity-Type` names the target; `X-Idempotency-Key` is optional but
+ * recommended.
  */
 import { Router } from 'express';
 import { authenticate, requirePermission, csrfGuard } from '../../middleware/security.ts';

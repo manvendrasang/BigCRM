@@ -16,7 +16,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../../lib/api';
 import {
- advanceDealStage,
  convertLead,
  deleteRecord,
  field,
@@ -328,34 +327,3 @@ export function FieldInput({
  );
 }
 
-/** Deal stage advancement is offered from the deal detail page. Included here so the action lives next to the record it changes. */
-export function DealStageButton({ dealId }: { dealId: string }): JSX.Element {
- const [stageId, setStageId] = useState('');
- const [message, setMessage] = useState<string | null>(null);
-
- async function advance(): Promise<void> {
- if (!stageId.trim()) return;
- try {
- await advanceDealStage(dealId, stageId.trim());
- setMessage('Stage advanced.');
- } catch (err) {
- setMessage(err instanceof ApiError ? err.message : 'Could not advance the stage.');
- }
- }
-
- return (
- <div className="toolbar">
- <input
- className="search"
- placeholder="New stage id..."
- value={stageId}
- onChange={(e) => setStageId(e.target.value)}
- aria-label="New stage id"
- />
- <button type="button" className="btn btn-secondary" onClick={() => { void advance(); }}>
- Advance stage
- </button>
- {message && <span className="muted">{message}</span>}
- </div>
- );
-}

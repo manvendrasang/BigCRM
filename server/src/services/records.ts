@@ -2,30 +2,26 @@
  * CRM record services -- companies, contacts, leads, deals, pipelines, tasks,
  * notes, activities, tags.
  *
- *  The invariants this file exists to hold 
+ * The invariants this file holds:
  *
- * 1. **Every read is tenant-scoped and excludes soft-deleted rows.** There is no
- * code path that can reach another tenant's row: `TenantScope` rejects any
- * statement missing an `organization_id` predicate at the SQL level
- * (`assertTenantPredicate`), not at the caller's discretion.
- *
- * 2. **Identifiers never reach SQL as text.** Columns and tables come from
- * `RecordSpec` constants declared here and are re-validated by
- * `allowlist()`. Sort columns, filter operators and order come from caller
- * input and are mapped through allowlists, never interpolated raw.
- *
- * 3. **The audit row and the mutation share one transaction.** If the business
- * write rolls back, so does its audit entry -- an audit trail can never claim
- * a change that did not happen. `writeAudit` swallows its own errors
- * (accepted risk A1), which is the only way a committed mutation can lack an
- * audit row; that is logged at `error` and counted, never silent.
- *
+ * 1. **Every read is tenant-scoped and excludes soft-deleted rows.** No code
+ *    path can reach another tenant's row: `TenantScope` rejects a statement
+ *    missing an `organization_id` predicate at the SQL level, not at the
+ *    caller's discretion.
+ * 2. **Identifiers never reach SQL as text.** Columns and tables come from the
+ *    `RecordSpec` constants here and are re-validated by `allowlist()`. Sort
+ *    columns, operators and order come from caller input and are mapped through
+ *    allowlists, never interpolated raw.
+ * 3. **The audit row shares the mutation's transaction.** If the business write
+ *    rolls back, so does its audit entry, so the trail can never claim a change
+ *    that did not happen. `writeAudit` swallows its own errors (accepted risk
+ *    A1) -- the only way a committed mutation can lack an audit row, and that
+ *    is logged at `error` and counted.
  * 4. **Soft delete, not hard delete.** `deleted_at`/`deleted_by` are set and the
- * row is filtered out of every read. Restoration is a separate, audited
- * operation with its own permission, so "delete" is reversible but not silent.
- *
- * 5. **Activity trail.** Each mutation writes an `activities` row describing who
- * did what to which entity, in the same transaction.
+ *    row is filtered from every read. Restore is a separate audited operation
+ *    with its own permission, so delete is reversible but not silent.
+ * 5. **Activity trail.** Each mutation writes an `activities` row in the same
+ *    transaction.
  */
 import {
  TenantScope, allowlist, insert, countScoped, direction,
@@ -168,10 +164,8 @@ const SPECS: Record<RecordType, RecordSpec> = {
  },
  tags: {
  label: 'tag',
- // `tags` has no `deleted_at` and no provenance columns: a tag is a small
- // shared vocabulary entry, not an auditable record. Declared explicitly so
- // no query for this type emits `deleted_at IS NULL` against a column that
- // does not exist.
+ // `tags` has no `deleted_at` and no provenance columns, so declaring that
+ // explicitly stops any query emitting a predicate against a missing column.
  provenance: { actor: null, softDelete: false },
  writable: ['name', 'color'],
  updatable: ['name', 'color'],
@@ -179,9 +173,6 @@ const SPECS: Record<RecordType, RecordSpec> = {
  searchable: ['name'],
  },
 };
-
-export const isRecordType = (v: unknown): v is RecordType =>
- typeof v === 'string' && Object.prototype.hasOwnProperty.call(SPECS, v);
 
 const specOf = (type: RecordType): RecordSpec => {
  const s = SPECS[type];
@@ -411,9 +402,8 @@ function prepare(type: RecordType, input: Row, partial = false): Prepared {
 
  case 'tasks': {
  const out: Prepared = {};
- // On an update (`partial`), `title` is optional: the row already has one, and
- // a viewer answering a task sends only `status`. Omitting it must not make
- // `prepare` reject the whole patch.
+ // On an update, `title` is optional: the row has one, and a viewer answering a
+ // task sends only `status`.
  const title = partial ? str(input.title, 200) : req(input.title, 200, 'title');
  if (title) out.title = title;
  const description = str(input.description, 20_000);
@@ -447,10 +437,8 @@ function prepare(type: RecordType, input: Row, partial = false): Prepared {
  return {
  entity_type: entityType,
  entity_id: entityId,
- // Stored XSS sink. `body_html` is markup by contract and is rendered as
- // markup by the client, so it must be passed through the allowlist
- // sanitiser on the way IN. Truncation alone left `<script>` and
- // `<img onerror>` intact in a field any reader of the record can view.
+ // Stored XSS sink: `body_html` is markup by contract and rendered as markup, so
+ // it is sanitised on the way IN. Truncation alone left `<script>` intact.
  body_html: sanitizeRichText(str(input.body_html, 100_000) ?? ''),
  body_text: stripControlChars(str(input.body_text, 100_000) ?? ''),
  };
@@ -482,7 +470,7 @@ function withServerFields(type: RecordType, prepared: Prepared, actor: ActorRef)
  id: newId(),
  organization_id: actor.organizationId,
  };
- // Drop anything the spec does not permit, so a caller cannot smuggle a column
+ // Drop anything the spec does not permit, so a column cannot be smuggled
  // through by naming it in the body.
  for (const key of Object.keys(out)) {
  const permitted = key === 'id' || key === 'organization_id'
@@ -529,10 +517,9 @@ async function recordActivity(
  metadata?: Row;
  },
 ): Promise<void> {
- // `bestEffort` wraps this in a SAVEPOINT. A plain try/catch is NOT enough:
- // a rejected INSERT aborts the whole PostgreSQL transaction, so the business
- // write it was annotating would be rolled back while the caller still received
- // a "successful" result. See TenantScope.bestEffort.
+ // `bestEffort` wraps this in a SAVEPOINT; a plain try/catch is not enough,
+ // because a rejected INSERT aborts the whole transaction and the caller still
+ // receives success. See TenantScope.bestEffort.
  await scope.bestEffort('activity.write', async (s) => {
  await s.unsafe.query(
  `INSERT INTO activities (id, organization_id, type, actor_id, entity_type, entity_id,
@@ -590,8 +577,7 @@ function buildFilters(type: RecordType, filters: Row | undefined, params: unknow
  const spec = specOf(type);
  for (const [rawKey, rawValue] of Object.entries(filters)) {
  if (rawValue === undefined || rawValue === null || rawValue === '') continue;
- // A filter column must be both a real column of this type and something a
- // client is allowed to filter on; `status` and ownership are common, and
+ // A filter column must be both real for this type and client-filterable;
  // anything not in the spec is rejected rather than ignored.
  if (!spec.writable.includes(rawKey) && !spec.updatable.includes(rawKey)) {
  throw badRequest(`Cannot filter on '${rawKey}'.`);
@@ -638,17 +624,16 @@ export async function listRecords(
  const sortColumn = query.sort ? allowlist(query.sort, spec.sortable) : (spec.sortable[2] ?? 'created_at');
  const order: SortDirection = direction(query.order);
 
- // `$1` is always organization_id, so the parameter array must be seeded with
- // it before any clause is numbered. (It previously started empty, which put
- // every generated placeholder one position ahead of its value -- an off-by-one
- // that only a real query execution reveals.)
+ // `$1` is always organization_id, so the array is seeded with it before any
+ // clause is numbered. It once started empty, putting every placeholder one ahead
+ // of its value -- an off-by-one only a real query execution reveals.
  const params: unknown[] = [actor.organizationId];
  const clauses: string[] = [];
 
  const q = str(query.q, 120);
  if (q) {
- // Parameterised ILIKE over an allowlisted column set. `%` and `_` in the
- // user's term are escaped so they cannot widen the match.
+ // Parameterised ILIKE over allowlisted columns; `%` and `_` in the search term
+ // are escaped so they cannot widen the match.
  const like = `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
  const parts = spec.searchable.map((c) => {
  const col = allowlist(c, spec.searchable);
@@ -665,16 +650,15 @@ export async function listRecords(
  clauses.push(`${spec.ownerColumn} = $${params.length}`);
  }
 
- // A viewer sees only tasks assigned to them. Adding the clause here (rather
- // than filtering the returned page) means the count uses the same predicate,
- // so pagination totals cannot leak the existence of unseen tasks.
+ // A viewer sees only tasks assigned to them. Applied as a clause rather than a
+ // page filter so the count uses the same predicate and totals cannot leak.
  if (isViewerTaskScoped(actor) && type === 'tasks') {
  params.push(actor.userId);
  clauses.push(`assignee_id = $${params.length}`);
  }
 
- // `tags` has no deleted_at column; emitting the predicate against it is a
- // hard SQL error, so the filter is driven by the spec, not assumed.
+ // Driven by the spec, not assumed: `tags` has no deleted_at, and emitting the
+ // predicate against it is a hard SQL error.
  const liveOnly = spec.provenance.softDelete && query.includeDeleted !== true;
  const where = [
  'organization_id = $1',

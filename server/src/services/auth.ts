@@ -1,25 +1,25 @@
 /**
- * Authentication service.
+ * Authentication service. Each control below was a defect in one of the legacy
+ * systems:
  *
- * Controls implemented here (each was a defect in one of the legacy systems):
- * * RULE 20 -- unknown-account and wrong-password cost the same. Login always
- * performs one full password verification, against a decoy hash when the
- * account does not exist. Legacy ticket-system skipped PBKDF2 entirely for
- * unknown emails, which is a timing oracle.
- * * RULE 21/23 -- idle AND absolute session expiry, both enforced on every
- * request, with per-session and revoke-all. Legacy ticket-system defined a
- * 30-day absolute TTL that only existed inside a function nobody called.
- * * RULE 24 -- rotating single-use refresh tokens with reuse detection: a burnt
- * token replay revokes the whole family.
- * * RULE 23 -- password change and password reset revoke every other session.
- * * RULE 19 -- reset/verify/invite tokens are random, single-use, hashed at
- * rest, short-lived, and never returned in an API response.
- * * RULE 115 -- failed-login lockout per account, distinct from IP rate limits.
+ * - RULE 20: unknown-account and wrong-password cost the same. Login always runs
+ *   one full verification, against a decoy hash when the account does not exist
+ *   (the legacy ticket-system skipped PBKDF2 entirely for unknown emails, which
+ *   is a timing oracle).
+ * - RULE 21/23: idle *and* absolute session expiry, enforced on every request,
+ *   with per-session and revoke-all (the legacy system defined a 30-day
+ *   absolute TTL inside a function nobody called).
+ * - RULE 24: rotating single-use refresh tokens with reuse detection -- a burnt
+ *   token replay revokes the whole family.
+ * - RULE 23: password change and reset revoke every other session.
+ * - RULE 19: reset/verify/invite tokens are random, single-use, hashed at rest,
+ *   short-lived, and never returned in a response.
+ * - RULE 115: failed-login lockout per account, distinct from IP rate limits.
  */
 import { env } from '../config/env.ts';
 import { getDb } from '../db/driver.ts';
 import type { DbClient } from '../db/driver.ts';
-import { TenantScope, initDriver } from '../repositories/base.ts';
+import { initDriver } from '../repositories/base.ts';
 import { AppError, conflict, forbidden, invalidCredentials, notFound, tooMany, unauthorized, validationFailed } from '../lib/errors.ts';
 import { newId, sha256 } from '../lib/ids.ts';
 import { isoPlus, isExpired, nowIso } from '../lib/time.ts';
@@ -79,9 +79,9 @@ export async function registerUser(input: RegisterInput): Promise<{ user: Public
  throw validationFailed({ organizationName: 'Organization name must be between 2 and 160 characters.' });
  }
 
- // One transaction: user + organization + membership are all-or-nothing (RULE 71).
- // The legacy CRM issued three independent INSERTs and could leave a user with
- // no organization after a crash mid-sequence.
+ // One transaction: user, organization and membership are all-or-nothing (RULE
+ // 71). The legacy CRM issued three independent INSERTs and could leave a user
+ // with no organization after a crash mid-sequence.
  return db.transaction(async (tx) => {
  const existing = await tx.query<UserRow>('SELECT id FROM users WHERE email_normalized = $1', [email]);
  if (existing.rows.length > 0) {
@@ -126,9 +126,8 @@ export async function registerUser(input: RegisterInput): Promise<{ user: Public
  user: { id: userId, email, name: String(input.name ?? '').trim(), emailVerified: false, mfaEnabled: false },
  organizationId: orgId,
  organizationName: orgName,
- // Handed to the email provider only. Never placed in an API response -- the
- // legacy system returned invite tokens in the response body, which is how
- // its account-takeover path worked.
+ // Handed to the email provider only, never in an API response. The legacy
+ // system returned invite tokens in the body, which is how its takeover worked.
  verificationToken: verify.token,
  verificationEmail: email,
  };
@@ -183,8 +182,8 @@ export async function loginUser(input: LoginInput): Promise<LoginResult> {
  const org: OrgRow | null = (await resolveOrganization(db, user.id, input.organizationId ?? null)) ?? null;
 
  if (user.mfa_enabled) {
- // The challenge is issued only after the password check above has passed, so
- // this path cannot be used to probe whether an account has MFA enabled.
+ // Issued only after the password check above, so this path cannot probe whether
+ // an account has MFA enabled.
  const { startChallenge } = await import('./mfa.ts');
  const challenge = await startChallenge(user.id);
  securityLog('auth.mfa.challenge_failed', { userId: user.id, stage: 'challenge_issued', ip: loggableIp(input.client.ip) });
@@ -344,8 +343,8 @@ export async function validateSession(accessToken: string): Promise<SessionCheck
  if (s.revoked_at) return { valid: false, reason: 'Session has been revoked.', code: 'session_revoked' };
  if (s.user_deleted) return { valid: false, reason: 'Account is closed.', code: 'user_deleted' };
 
- // Absolute timeout is enforced on EVERY request, not just at issue time. This
- // is the check the legacy CRM only ran inside an uncalled cleanup function.
+ // The absolute timeout is enforced on EVERY request, not just at issue time --
+ // the check the legacy CRM ran only inside an uncalled cleanup function.
  if (isExpired(s.absolute_expires_at)) {
  await revokeSessions(db, s.user_id, [s.id], 'absolute_timeout');
  securityLog('session.absolute_timeout', { userId: s.user_id, sessionId: s.id });
@@ -358,7 +357,7 @@ export async function validateSession(accessToken: string): Promise<SessionCheck
  securityLog('session.idle_timeout', { userId: s.user_id, sessionId: s.id });
  return { valid: false, reason: 'Session has expired.', code: 'session_expired' };
  }
- // Membership must still exist. A removed member's access dies immediately even
+ // Membership must still exist: a removed member loses access immediately even
  // though their token has not expired.
  if (claims.org) {
  const member = await db.query(
@@ -412,10 +411,10 @@ export async function refreshSession(refreshToken: string, client: ClientInfo): 
  if (!s) return { ok: false, reason: 'Session not found.', code: 'session_missing' };
  if (s.deleted_at) return { ok: false, reason: 'Account is closed.', code: 'user_deleted' };
 
- // REUSE DETECTION. A refresh token is single-use. Presenting one that is already
- // `used_at` means the token leaked and someone else replayed it: revoke the
- // entire family and force a fresh login. The unique index on refresh_jti makes
- // two concurrent rotations a detectable race rather than a silent split-brain.
+ // REUSE DETECTION. A refresh token is single-use; presenting one already marked
+ // `used_at` means it leaked and someone replayed it, so the whole family is
+ // revoked and a fresh login forced. The unique index on refresh_jti makes two
+ // concurrent rotations a detectable race rather than a silent split-brain.
  if (s.used_at && s.refresh_hash !== presentedHash) {
  await revokeFamily(db, s.family_id, 'refresh_reuse_detected');
  securityLog('auth.token_refresh_reuse_detected', { userId: s.user_id, familyId: s.family_id, ip: loggableIp(client.ip) });
@@ -455,22 +454,17 @@ export async function refreshSession(refreshToken: string, client: ClientInfo): 
  const rotated = issueRefreshToken({ userId: s.user_id, sessionId: s.id, familyId: s.family_id });
  const access = issueAccessToken({ userId: s.user_id, orgId: orgId ?? '', role: role ?? '', sessionId: s.id });
 
- // Rotation is a compare-and-set, not a blind write. The read above and this
- // update were two separate statements with no lock between them, so two
- // concurrent `POST /auth/refresh` carrying the same token both observed
- // `used_at IS NULL`, both validated, both rotated, and the second UPDATE
- // overwrote the first. Reuse detection never fired: the attacker ended up
- // holding a working token and the honest client's next refresh tripped reuse
- // and revoked the whole family -- a self-inflicted logout loop under normal
- // concurrency (two tabs, a retrying client).
+ // Rotation is a compare-and-set, not a blind write. As separate unlocked
+ // statements, two concurrent `POST /auth/refresh` carrying the same token both
+ // saw `used_at IS NULL`, both rotated, and the second UPDATE overwrote the
+ // first: reuse detection never fired, the attacker kept a working token, and
+ // the honest client's next refresh tripped reuse and revoked the family -- a
+ // self-inflicted logout loop under ordinary concurrency (two tabs, a retry).
  //
- // Requiring `used_at IS NULL AND refresh_hash = presentedHash` means exactly
- // one caller updates the row; the other gets no row back and is treated as a
- // reuse, which is what a genuine concurrent replay actually is.
- //
- // The comment above claiming `refresh_jti` made this detectable was wrong:
- // `refresh_jti` is a freshly generated UUID per rotation and so can never
- // collide on its unique index.
+ // Requiring `used_at IS NULL AND refresh_hash = presentedHash` means exactly one
+ // caller updates the row; the other gets nothing back and is treated as a
+ // replay, which is what a concurrent refresh genuinely is. Note `refresh_jti`
+ // cannot do this job: it is a fresh UUID per rotation and never collides.
  const claimed = await db.query<{ id: string }>(
  `UPDATE sessions SET refresh_jti = $1, refresh_hash = $2, used_at = $3, rotated_at = $4, last_seen_at = $5, role = $6
  WHERE id = $7 AND used_at IS NULL AND refresh_hash = $8
@@ -705,8 +699,5 @@ async function uniqueSlug(db: DbClient, base: string): Promise<string> {
 
 export { resolveOrganization, toPublic, deviceLabel };
 export type { UserRow, OrgRow };
-export function tenantFor(organizationId: string, tx?: DbClient | null): TenantScope {
- return new TenantScope(organizationId, tx);
-}
 export { getDb };
 export { unauthorized };

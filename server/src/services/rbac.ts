@@ -1,19 +1,16 @@
 /**
  * RBAC with an explicit role hierarchy (RULE 26, 27, 28).
  *
- * Three properties the legacy implementations got wrong are enforced here:
+ * Three defects the legacy implementations had are closed here:
  *
- * 1. owner  admin. In the legacy CRM their permission sets were byte-identical,
- * which made "last owner" protection guard a distinction that did not exist.
- * Here owner holds `organization.delete` and `members.transfer_ownership`,
- * which admin does not.
- *
- * 2. Rank is data, not inference. `ROLE_RANK` makes "can A act on B" a single
- * comparison. The legacy `change_role` had no ordering check at all, so an
- * admin could promote itself to owner and demote the owner.
- *
- * 3. Self-escalation is denied outright, and a target can never be moved above
- * or below the actor's reachable band.
+ * 1. **owner != admin.** Their permission sets were byte-identical, which made
+ *    "last owner" protection guard a distinction that did not exist. Owner alone
+ *    holds `organization.delete` and `members.transfer_ownership`.
+ * 2. **Rank is data, not inference.** `ROLE_RANK` makes "can A act on B" one
+ *    comparison. The legacy `change_role` had no ordering check, so an admin
+ *    could promote itself to owner and demote the owner.
+ * 3. **No self-escalation**, and a target can never move outside the actor's
+ *    reachable band.
  *
  * Permissions are namespaced `resource.verb` and checked server-side on every
  * route. Client-supplied roles are ignored entirely.
@@ -79,13 +76,11 @@ const P = {
 const crud = (resource: string, verbs: readonly string[] = ['read', 'create', 'update', 'delete']): string[] =>
  verbs.map((v) => `${resource}.${v}`);
 // NOTE: an earlier revision declared CONTACT_EXTRA / COMPANY_EXTRA / DEAL_EXTRA /
-// LEAD_EXTRA here and never referenced them -- the matrix below spells each
-// permission out explicitly instead. The permissions are genuinely granted
-// (`contacts.merge`, `deals.won`, `leads.convert`, ... were verified held by
-// manager/admin/owner), so this was dead code rather than a missing grant. It is
-// removed because a declared-but-unused permission list is exactly the kind of
-// artefact that later gets "wired up" a second time and silently disagrees with
-// the matrix.
+// LEAD_EXTRA and never referenced them. The permissions were genuinely granted
+// (`contacts.merge`, `deals.won`, `leads.convert`, ... all verified held by
+// manager/admin/owner), so this was dead code rather than a missing grant. The
+// matrix spells each out explicitly instead: a declared-but-unused list is what
+// later gets "wired up" a second time and disagrees with the matrix.
 
 const READERS = [
  ...crud('contacts', ['read']), ...crud('companies', ['read']),
@@ -322,7 +317,3 @@ export function wouldOrphanOwners(args: {
  }
  return null;
 }
-
-/** Exposed for the settings UI so the matrix is visible rather than implicit. */
-export const describeMatrix = (): Record<string, string[]> =>
- Object.fromEntries(ROLES.map((r) => [r, [...ROLE_PERMISSIONS[r]].sort()]));

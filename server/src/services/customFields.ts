@@ -1,39 +1,22 @@
 /**
- * Custom fields (item 8).
+ * Custom fields: per-organisation definitions on the five record types, values
+ * stored generically in `custom_field_values`.
  *
- * Per-organisation field definitions on the five record types, with values
- * stored generically in `custom_field_values`. The definition carries the type,
- * the options for selects, and whether the field is required; every value
- * write is validated against the definition before it touches the database.
+ * Validation lives here rather than in the route, which only parses the
+ * envelope. This module decides whether a value is acceptable for a field: a
+ * `number` given `"twelve"`, a `select` given an undefined option, and an unknown
+ * key are all rejected with 400 before any write. The database CHECK
+ * constraints are the backstop, not the mechanism.
  *
- *  Validation lives here, not in the route 
- *
- * The route parses the envelope; this module decides whether a value is
- * acceptable for a field. A `number` field receiving `"twelve"` is rejected, a
- * `select` receiving an option that was never defined is rejected, and an
- * unknown field key is rejected -- all with 400, all before any write. The
- * database CHECK constraints (`key ~ '^[a-z]...'`, `field_type IN (...)`) are
- * the backstop, not the mechanism.
- *
- *  Tenant scope 
- *
- * Both tables are in TENANT_TABLES, and every statement here carries
- * `organization_id` via `TenantScope`. A field defined by org A is invisible
- * to org B even when B guesses the field id: the definition lookup filters by
- * org, so the value write fails closed with "unknown field" rather than
- * writing into another tenant's schema.
+ * Both tables are tenant-scoped. A field defined by org A is invisible to org B
+ * even when B guesses the id, because the definition lookup filters by org and
+ * the value write therefore fails closed with "unknown field".
  */
 import { TenantScope } from '../repositories/base.ts';
 import { badRequest, notFound } from '../lib/errors.ts';
 import { newId } from '../lib/ids.ts';
 import { nowIso } from '../lib/time.ts';
 import type { ActorRef } from './records.ts';
-
-export type CustomFieldType =
- | 'text' | 'long_text' | 'number' | 'currency' | 'date' | 'datetime'
- | 'boolean' | 'select' | 'multi_select' | 'email' | 'phone' | 'url';
-
-export type CustomEntityType = 'contact' | 'company' | 'lead' | 'deal' | 'task';
 
 const ENTITY_TYPES: readonly string[] = ['contact', 'company', 'lead', 'deal', 'task'];
 const FIELD_TYPES: readonly string[] = [

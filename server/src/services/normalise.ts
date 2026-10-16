@@ -74,6 +74,3 @@ export const normaliseCountry = (v: unknown): string | null => {
  const raw = String(v ?? '').trim().toUpperCase();
  return /^[A-Z]{2}$/.test(raw) ? raw : null;
 };
-
-/** Human label for an enum value that failed validation, for audit records. */
-export const enumLabel = (v: unknown): string => String(v ?? '').slice(0, 40);

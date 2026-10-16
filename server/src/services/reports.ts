@@ -1,26 +1,20 @@
 /**
- * Reports (item 7).
+ * Reports: pipeline value by stage, lead funnel by status, task load by status.
  *
- * Aggregations over tenant-scoped records: pipeline value by stage, lead
- * funnel by status, task load by status. Every query carries
- * `organization_id = $1` through `TenantScope`, so a report can never include
- * another tenant's rows -- the same guarantee as the list endpoints, applied to
- * `GROUP BY` rather than `SELECT ... LIMIT`.
+ * Every query carries `organization_id` through `TenantScope`, so a report can
+ * never include another tenant's rows -- the list endpoints' guarantee, applied
+ * to `GROUP BY` rather than `SELECT ... LIMIT`.
  *
- *  Why a dedicated endpoint rather than client-side aggregation 
- *
- * The list endpoints paginate (max 200 rows). A pipeline report computed from
- * the first page would silently omit every deal past it, and fetching all
- * pages to aggregate in the browser is N requests for one number. Aggregation
- * in SQL is one indexed query per report. The client renders; it does not
+ * A dedicated endpoint rather than client-side aggregation because the list
+ * endpoints paginate at 200 rows: a pipeline report computed from the first page
+ * would silently omit every deal past it, and fetching every page to aggregate
+ * in the browser is N requests for one number. The client renders; it does not
  * count.
  *
- *  Centralised metric definitions (RULE 152) 
- *
- * Each report names exactly what it counts, so two consumers cannot disagree:
- * "open deal value" means `status NOT IN ('won','lost')` summed in cents,
+ * Metric definitions are centralised (RULE 152) so two consumers cannot
+ * disagree: "open deal value" is `status NOT IN ('won','lost')` summed in cents,
  * "lead funnel" counts by `status`, "task load" counts non-deleted tasks by
- * `status` and `priority`. If the definition changes, it changes here once.
+ * `status` and `priority`.
  */
 import { TenantScope } from '../repositories/base.ts';
 import type { ActorRef } from './records.ts';

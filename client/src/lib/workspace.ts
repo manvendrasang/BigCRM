@@ -102,10 +102,9 @@ export async function listAuditLogs(filters: {
  if (filters.entityType) params.set('entityType', filters.entityType);
  if (filters.outcome) params.set('outcome', filters.outcome);
  const body = await api.get<unknown>(`/org/audit-logs?${params.toString()}`);
- // `api.get` already unwraps the outer `{ data: ... }` envelope, so this sees
- // `{ items, total }` directly. Unwrapping a second time yields an empty log
- // with no error -- the page simply renders "no entries match" forever -- so the
- // shape is checked rather than assumed.
+ // `api.get` already unwraps `{ data: ... }`, so this sees `{ items, total }`.
+ // Unwrapping twice yields an empty log with no error -- the page renders "no
+ // entries match" forever -- so the shape is checked rather than assumed.
  if (typeof body !== 'object' || body === null || !('items' in body)) {
  return { items: [], total: 0 };
  }

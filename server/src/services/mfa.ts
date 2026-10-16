@@ -1,38 +1,27 @@
 /**
  * Multi-factor authentication (TOTP, RFC 6238) and recovery codes.
  *
- *  Why the secret is encrypted at rest 
+ * The TOTP secret is encrypted at rest because it is a bearer credential: anyone
+ * holding it produces a valid code from anywhere for the current 30-second step
+ * with no user interaction. A plaintext secret would mean a read-only SQL
+ * injection, a backup dump or a `SELECT *` in a support ticket yields a
+ * permanent second-factor bypass -- a far worse blast radius than a password,
+ * which at least is a KDF output rather than the credential itself. AES-256-GCM,
+ * with a key derived from `SECRETS_PEPPER` through HKDF under a purpose string,
+ * so this key is not the password-hashing key and one compromise cannot pivot
+ * into the other.
  *
- * A TOTP secret is a bearer credential. Anyone holding it produces a valid code
- * from anywhere, for the current 30-second step, with no user interaction. A
- * plaintext secret would therefore mean that a read-only SQL injection, a
- * backup dump, a replica snapshot, or a `SELECT *` pasted into a support ticket
- * yields a permanent second-factor bypass. That is a far worse blast radius than
- * a password, which at least is a KDF output rather than the credential itself.
+ * Replay: HOTP is deterministic, so a shoulder-surfed code would be valid for
+ * its whole step. `users.mfa_last_used_step` records the accepted step and
+ * refuses anything at or below it, making each code single-use.
  *
- * The encryption is AES-256-GCM (authenticated) with a key derived from
- * `SECRETS_PEPPER` through HKDF with a purpose string. The purpose string means
- * the key used here is not the key used for password hashing: one compromised
- * derivation cannot be pivoted into the other.
- *
- *  Replay 
- *
- * HOTP is deterministic -- a code is valid for its entire 30-second step. An
- * observer who shoulder-surfs a single code could replay it until the step
- * rolls over. `users.mfa_last_used_step` records the accepted step and refuses
- * anything at or below it, so each code is accepted once.
- *
- *  Enrolment is a three-legged flow, and the secret is not live until it is 
- *
- * 1. `POST /auth/mfa/enroll` -> returns a secret + otpauth:// URI, stores the
- * encrypted secret with `mfa_enabled` still FALSE.
- * 2. The authenticator app shows a code.
- * 3. `POST /auth/mfa/enroll/confirm` -> verifies it, flips `mfa_enabled` TRUE,
- * and returns recovery codes exactly once.
- *
- * A user who abandons step 1 has an encrypted blob that grants nothing, because
- * `mfa_enabled` gates the login challenge and a CHECK constraint refuses to let
- * the two disagree.
+ * Enrolment is three-legged and the secret is not live until it completes:
+ * `POST /auth/mfa/enroll` returns the secret and stores it encrypted with
+ * `mfa_enabled` still FALSE; the app shows a code; `POST /auth/mfa/enroll/confirm`
+ * verifies it, flips the flag, and returns recovery codes once. A user who
+ * abandons step 1 holds an encrypted blob that grants nothing, because
+ * `mfa_enabled` gates the challenge and a CHECK constraint forbids the two
+ * from disagreeing.
  */
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { fieldKey } from '../lib/kms.ts';
@@ -75,9 +64,9 @@ const CIPHER_VERSION = 'v1';
 
 //  secret encryption 
 // The field key comes from the configured provider (`lib/kms.ts`): HKDF under
-// SECRETS_PEPPER by default, a KMS-held data key when `MFA_KEY_PROVIDER=kms`.
-// The `info` string is load-bearing -- it must stay byte-identical, or every
-// stored secret stops decrypting.
+// SECRETS_PEPPER by default, a KMS data key when `MFA_KEY_PROVIDER=kms`. The
+// `info` string is load-bearing: change a byte and every stored secret stops
+// decrypting.
 
 /** Purpose string for the TOTP field key. Frozen; see above. */
 const TOTP_KEY_INFO = 'mfa.totp_secret';
@@ -183,8 +172,8 @@ async function consumeChallenge(
  throw unauthorized('This MFA challenge has expired.');
  }
  if (row.attempts >= MAX_ATTEMPTS) {
- // Burn the challenge outright: five wrong codes means the token is in
- // someone's hands, and unlimited retries would let them keep guessing.
+ // Burn the challenge outright: five wrong codes means the token is in someone's
+ // hands, and unlimited retries would let them keep guessing.
  await db.query('UPDATE mfa_challenges SET consumed_at = $1 WHERE id = $2', [nowIso(), row.id]);
  securityLog('auth.mfa.challenge_failed', { userId, reason: 'attempts_exhausted', purpose });
  throw tooMany('Too many incorrect codes. Start again.');
@@ -235,8 +224,8 @@ export async function startEnrollment(userId: string): Promise<EnrollStart> {
  if (!user) throw notFound('Account not found.');
  if (user.mfa_enabled) throw badRequest('Multi-factor authentication is already enabled.');
 
- // Re-enrolling discards any earlier unconfirmed secret, so a lost phone does
- // not leave a stale half-enrolled state behind.
+ // Re-enrolling discards any earlier unconfirmed secret, so a lost phone leaves no
+ // stale half-enrolled state behind.
  await db.query(
  `DELETE FROM mfa_challenges WHERE user_id = $1 AND purpose = 'enroll' AND consumed_at IS NULL`, [userId]);
 
@@ -290,13 +279,13 @@ export async function confirmEnrollment(
  throw invalidCredentials();
  }
 
- // Recovery codes: shown once, stored hashed. `generateRecoveryCodes` returns
- // the plaintext and the matching hashes together so the pairing cannot drift.
+ // Shown once, stored hashed. The plaintext and hashes are returned together so
+ // the pairing cannot drift.
  const { codes, hashes } = generateRecoveryCodes(10);
  await db.transaction(async (tx) => {
  // The challenge claim is first and conditional: two concurrent confirmations
- // carrying the same token must not both mint recovery codes. The loser gets
- // no row back and fails outright, and the transaction rolls back.
+ // with the same token must not both mint recovery codes. The loser gets no row
+ // and fails, rolling the transaction back.
  if (!(await claimChallenge(tx, challenge.id))) {
  throw unauthorized('This MFA challenge is not valid.');
  }
@@ -307,9 +296,8 @@ export async function confirmEnrollment(
  [newId(), userId, h],
  );
  }
- // Conditional for the same reason: two confirmations under DIFFERENT
- // challenges (double submit) must not issue two code sets, silently killing
- // the first caller's codes.
+ // Conditional for the same reason: two confirmations under different challenges
+ // must not issue two code sets and silently kill the first caller's.
  const enabled = await tx.query<{ id: string }>(
  'UPDATE users SET mfa_enabled = true, mfa_enrolled_at = $1 WHERE id = $2 AND mfa_enabled = false RETURNING id',
  [nowIso(), userId],
@@ -363,8 +351,8 @@ export async function completeChallenge(
  );
  if (recovery.rows[0]) {
  await db.transaction(async (tx) => {
- // Compare-and-set: the code must still be unused at the moment we claim
- // it, so two concurrent redemptions cannot both spend the same code.
+ // Compare-and-set: the code must still be unused when claimed, so two
+ // concurrent redemptions cannot both spend it.
  const claimed = await tx.query<{ id: string }>(
  'UPDATE mfa_recovery_codes SET used_at = $1 WHERE id = $2 AND used_at IS NULL RETURNING id',
  [nowIso(), recovery.rows[0]!.id],

@@ -1,23 +1,18 @@
 /**
- * Audit log reads + notifications (previously "not yet implemented" in API.md).
+ * Audit log reads + notifications.
  *
- *  Audit 
+ * `GET /api/v1/org/audit-logs` pages the org's trail newest-first under
+ * `audit.read`. The trail is append-only at the SQL layer so reads need no
+ * mutation guard, but they do need the tenant predicate. Filters are exact-match
+ * on `action`, `entity_type` and `outcome` only; free text over
+ * `before_json`/`after_json` would be a full-table scan anyone could trigger,
+ * so it does not exist.
  *
- * `GET /api/v1/org/audit-logs` pages the org's audit trail newest-first under
- * `audit.read`. The trail is append-only at the SQL layer, so reads need no
- * mutation guard -- but they do need the tenant predicate, like everything else.
- * Filters are exact-match on `action`, `entity_type` and `outcome` only; free
- * text over `before_json`/`after_json` would be a full-table scan users could
- * trigger at will, so it does not exist.
- *
- *  Notifications 
- *
- * `GET /api/v1/notifications` lists the caller's own notifications
- * (org-scoped AND user-scoped: a user reads only their own rows).
- * `POST /api/v1/notifications/:id/read` marks one read;
- * `POST /api/v1/notifications/read-all` marks all read. Marking another
- * user's notification read 404s rather than 403s -- the existence of another
- * user's rows is not information worth confirming.
+ * `GET /api/v1/notifications` lists the caller's own rows (org-scoped *and*
+ * user-scoped). `POST /api/v1/notifications/:id/read` marks one;
+ * `POST /api/v1/notifications/read-all` marks all. Marking another user's
+ * notification 404s rather than 403s -- their existence is not information worth
+ * confirming.
  */
 import { Router } from 'express';
 import { authenticate, requirePermission, csrfGuard } from '../../middleware/security.ts';

@@ -74,6 +74,3 @@ export const stripControlChars = (input: unknown): string =>
  .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
  .replace(/\r\n/g, '\n');
 
-/** Canonical single-line form for tags, company domains and search keys. */
-export const normaliseTagName = (input: unknown): string =>
- stripControlChars(input).replace(/\s+/g, ' ').trim().slice(0, 60).toLowerCase();

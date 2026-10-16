@@ -1,20 +1,16 @@
 /**
- * Background worker entrypoint.
+ * Background worker entrypoint: boots like the API, then runs the job-queue
+ * worker instead of listening. Run it as a separate process beside as many API
+ * replicas as needed -- claiming is race-safe, so workers never double-execute
+ * a job.
  *
- * Boots like the API (validated config, driver, current schema) and then runs
- * the job-queue worker instead of listening. Run it as a separate process
- * next to as many API replicas as needed -- claiming is race-safe, so workers
- * never double-execute a job:
+ * `npm run worker`
  *
- * npm run worker
- *
- * Handlers are registered here, at the composition root, never inside the
- * queue module: the queue is transport, this file decides what runs. Today
- * no production handlers are registered (see §4.4 -- the designated first
- * workloads are the export runner and notification digests, both of which
- * need their sync contracts reworked first), so a production worker idles.
- * That is deliberate and documented, not an oversight: an idle worker that is
- * tested beats a busy one wired to the wrong workload.
+ * Handlers are registered here at the composition root, never inside the queue
+ * module: the queue is transport, this file decides what runs. No production
+ * handlers are registered yet (the first candidates are the export runner and
+ * notification digests), so a production worker idles. That is deliberate: an
+ * idle worker that is tested beats a busy one wired to the wrong workload.
  */
 import { initDriver } from './repositories/base.ts';
 import { migrate, migrationStatus } from './db/migrate.ts';

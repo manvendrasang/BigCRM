@@ -1,12 +1,9 @@
 /**
- * Process entrypoint.
+ * Process entrypoint: prove the config is safe, prove the schema is current,
+ * open the database, listen, then drain on signal.
  *
- * Responsibilities, in order: prove the configuration is safe, prove the schema
- * is current, open the database, start listening, and then install signal
- * handlers that drain rather than drop connections.
- *
- * A server that starts with an out-of-date schema serves 500s that look like
- * application bugs, so migrations are checked here and a missing one is fatal.
+ * A server on an out-of-date schema serves 500s that look like application
+ * bugs, so a missing migration is fatal here rather than at the first request.
  */
 import { createApp } from './app.ts';
 import { env } from './config/env.ts';

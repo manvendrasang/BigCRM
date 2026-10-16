@@ -3,50 +3,36 @@
  * not while another tab is still open.
  *
  * The naive implementation is a `sendBeacon` to `/auth/logout` on `pagehide`.
- * It is wrong in two ways that matter on a shared office machine:
+ * It is wrong twice: `pagehide` also fires on an ordinary refresh, so F5 would
+ * sign you out; and the session lives in an HttpOnly cookie shared by every tab,
+ * so closing one of three tabs would revoke all three.
  *
- * 1. `pagehide` fires on an ordinary refresh, so F5 would sign you out. The
- *    requirement is that closing the *window* ends the session.
- * 2. The session lives in an HttpOnly cookie shared by every tab, so closing
- *    one of three tabs would revoke all three.
+ * Neither is decidable inside the unload handler, so the decision is made by the
+ * *next* page load, using the one storage primitive that differs between the two
+ * cases: `sessionStorage` is per-tab, survives a refresh, and is destroyed when
+ * the tab closes. So a sessionStorage id present at boot means "this tab was
+ * already alive" (a refresh); absent means "brand-new tab".
  *
- * Neither is decidable inside the unload handler: at that moment "the user
- * closed the window" and "the user pressed F5" produce identical events. So the
- * decision is not made on the way out; it is made by the *next* page load, using
- * the one storage primitive that differs between the two cases:
+ * A new tab is not by itself a reason to sign out, so a localStorage registry
+ * answers whether another tab is alive. Each tab writes `{ id, ts, closing }`
+ * and refreshes `ts` on an interval; on real teardown it sets `closing` (a
+ * synchronous write, so it lands as the context is destroyed). An entry is
+ * alive only if it is neither closing nor stale -- `closing` covers the fast
+ * case (reopen a second later), staleness the crash case (no `pagehide` at all).
  *
- * `sessionStorage` is per-tab, survives a refresh, and is destroyed when the tab
- * is closed. Therefore:
+ * | situation | other live tabs | sign out |
+ * |---|---|---|
+ * | F5 / reload in the same tab | (self) | no |
+ * | last tab closed, reopened later | none | yes |
+ * | one of three tabs closed, new tab | two alive | no |
+ * | all tabs closed, one reopened | none | yes |
+ * | new tab while the only tab is open | one alive | no |
  *
- * * sessionStorage id present at boot  -> this tab was already alive -> refresh.
- * * sessionStorage id absent at boot   -> this is a brand-new tab/window.
- *
- * A brand-new tab is not automatically a reason to sign out (opening a new tab
- * while signed in is ordinary), so the tab registry answers the remaining
- * question: is any *other* tab still alive?
- *
- * Each tab writes `{ id, ts, closing }` into a localStorage registry and
- * refreshes `ts` on an interval. On real teardown it sets `closing` on its own
- * entry (a synchronous localStorage write, so it lands even though the context
- * is being destroyed). So an entry is "alive" only if it is neither closing nor
- * stale. `closing` covers the fast case (reopen a second after closing);
- * staleness covers the crash case (no `pagehide` at all).
- *
- * Decision table:
- *
- * | situation                          | other live tabs | sign out |
- * |------------------------------------|-----------------|----------|
- * | F5 / reload in the same tab        | (self)          | no       |
- * | last tab closed, reopened later    | none            | yes      |
- * | one of three tabs closed, new tab  | two alive       | no       |
- * | all tabs closed, one reopened      | none            | yes      |
- * | new tab while the only tab is open | one alive       | no       |
- *
- * The sign-out itself is a fire-and-forget beacon to the existing logout route:
- * the access token cookie authenticates it, `csrfGuard` is satisfied by the
- * same-origin `Origin` header, and the response is discarded because the page is
- * already gone. `wasSignedOutOnOpen()` then tells the auth provider to skip its
- * session probe, so the dashboard never flashes before the login page appears.
+ * The sign-out is a fire-and-forget beacon to the existing logout route: the
+ * access token cookie authenticates it, `csrfGuard` is satisfied by the
+ * same-origin `Origin` header, and the response is discarded. If the beacon
+ * never arrives (a hard kill), the next load still refuses the session, because
+ * this page has already decided to render the login screen.
  */
 
 /** Per-tab id. sessionStorage: survives refresh, dies with the tab. */

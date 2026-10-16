@@ -1,29 +1,21 @@
 /**
- * Attachments (item 8).
+ * Attachments: files on records, stored via the local driver and described in
+ * the `attachments` table. The upload path is the security-sensitive one:
  *
- * Files attached to records, stored on the local driver and described in the
- * `attachments` table. The upload path is the security-sensitive one, so its
- * controls are stated explicitly:
+ * 1. **Magic bytes, not MIME.** `inspectUpload` reads the signature, so a
+ *    renamed `.exe` fails and SVG/HTML are refused outright -- browsers execute
+ *    them.
+ * 2. **Size bounded twice.** The body limit caps the request, `maxUploadBytes`
+ *    caps the file, and neither is client-controllable.
+ * 3. **Content-addressed key** (`sha256(content)`), so identical uploads share
+ *    storage and no key can be guessed to overwrite an unrelated file. The
+ *    original filename is metadata and never reaches the filesystem.
+ * 4. **Tenant-scoped rows.** Every statement carries `organization_id`, and
+ *    download re-checks it, so another tenant's id 404s rather than serving.
  *
- * 1. **Magic bytes, not MIME.** `inspectUpload` identifies the content from its
- * signature; a renamed `.exe` fails because its bytes say executable, and
- * SVG/HTML are refused outright because browsers execute them.
- * 2. **Size bounded twice.** Express's body limit caps the request, and
- * `maxUploadBytes` caps the file -- a 25 MB default neither of which the
- * client can raise.
- * 3. **Content-addressed storage key.** The key is `sha256(content)`, so two
- * uploads of the same bytes share storage and a key cannot be guessed to
- * overwrite an unrelated file. The original filename is metadata only and
- * never reaches the filesystem.
- * 4. **Tenant-scoped rows.** The `attachments` table is in TENANT_TABLES; every
- * statement carries `organization_id`. Download re-checks the row belongs
- * to the caller's org -- a signed URL or guessed id for another tenant's
- * file 404s rather than serving it.
- *
- * Only the `local` driver is implemented. S3 needs credentials, a bucket, and
- * a presigning flow that cannot be verified without AWS; the config accepts
- * the setting so the shape is forward-compatible, but the service refuses to
- * boot on it rather than pretend. That refusal is documented, not silent.
+ * Only the `local` driver is implemented. S3 needs credentials, a bucket and a
+ * presigning flow that cannot be verified without AWS, so the service refuses to
+ * boot on it rather than pretend.
  */
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';

@@ -33,44 +33,17 @@
  */
 
 /**
- * MongoDB Atlas document-store provider (RULE 162 `StorageProvider` sibling).
+ * MongoDB Atlas document-store provider. See the banner above for why this is
+ * not the system of record and what it would take to restore.
  *
- *  Why this exists, and why it is NOT the primary store 
- *
- * BigCRM's system of record is PostgreSQL. That is a deliberate security
- * decision, not a default: the schema leans on guarantees MongoDB cannot
- * provide --
- *
- * - 89 foreign keys -> MongoDB has no referential integrity; a dangling
- * company_id or stage_id becomes silently possible
- * - 53 CHECK constraints -> domain invariants (valid enum, non-negative money,
- * completed  completed_at) would move to app code
- * - composite FK -> "a deal's stage must belong to its pipeline" is
- * expressible in PostgreSQL and *not* in MongoDB
- * - append-only trigger -> audit tamper-evidence is a database guarantee;
- * in MongoDB it would become an application promise
- * - runtime tenant guard -> `assertTenantPredicate()` is SQL-aware
- *
- * Replacing the system of record with a document store would trade
- * *enforced* isolation for *asserted* isolation. `docs/PROJECT_STATUS.md` records
- * that trade as declined.
- *
- * MongoDB is therefore used where a document store is genuinely the right tool:
- * schemaless integration payloads and webhook delivery records, where documents
- * are heterogeneous by design and are never joined or constrained.
- *
- *  Security properties 
- *
- * RULE 56 the URI is a secret. It is never logged, never echoed, never
- * included in an error message, and never returned by a health check.
- * RULE 52 TLS is mandatory. `mongodb+srv` implies TLS; `mongodb://` is
- * refused unless an explicit override is set, because Atlas without
- * TLS transmits credentials in clear.
- * RULE 88 the endpoint is validated before a connection is attempted, so a
- * misconfigured URI cannot be pointed at an internal host.
- * RULE 77 bounded server selection, connect timeout and socket timeout -- a
- * hung Atlas must not hang a request.
- * RULE 8 one shared client with a bounded pool, not a client per request.
+ * Security properties of the client itself: the URI is a secret and is never
+ * logged, echoed, returned by a health check, or included in an error (RULE 56);
+ * TLS is mandatory, `mongodb://` is refused without an explicit override
+ * (RULE 52); the endpoint is validated before connecting so a misconfigured URI
+ * cannot target an internal host (RULE 88); server selection, connect and
+ * socket timeouts are bounded so a hung Atlas cannot hang a request (RULE 77);
+ * and one shared client with a bounded pool is used rather than a client per
+ * request (RULE 8).
  */
 import { MongoClient, type Collection, type Db, type Document } from 'mongodb';
 import { env } from '../config/env.ts';
@@ -280,5 +253,3 @@ export async function closeMongo(): Promise<void> {
  logger.info('mongodb connection closed');
  }
 }
-
-export const __testOnly = { newId };

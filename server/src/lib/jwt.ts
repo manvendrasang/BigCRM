@@ -28,7 +28,6 @@ export type RefreshClaims = {
  fam: string; // token-family id; constant across rotations
 };
 
-export type TokenPair = { accessToken: string; refreshToken: string; accessExpiresIn: number; refreshExpiresIn: number };
 
 const b64u = (s: string | Buffer): string =>
  Buffer.from(s).toString('base64url');

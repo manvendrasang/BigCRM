@@ -1,30 +1,26 @@
 /**
- * Tenant-scoped repository base.
+ * Tenant-scoped repository base. RULE 14/15: isolation is enforced in the data
+ * layer, not in route handlers, by two mechanisms:
  *
- * RULE 14/15: tenant isolation is enforced in the data layer, not in route
- * handlers. Two mechanisms back that up:
- *
- * 1. Compile-time -- `TenantScope` cannot be constructed without an
- * organizationId, so a tenant query without one is a type error rather than
- * a review comment. Every helper here takes a scope as its first argument.
- *
- * 2. Runtime -- every generated statement carries `organization_id = $n`. There
- * is no `query()` escape hatch exposed on the scope, so a query that omits
- * the tenant predicate cannot be expressed without deliberately going around
- * the abstraction.
+ * 1. **Compile-time** -- `TenantScope` cannot be constructed without an
+ *    organizationId, and every helper here takes a scope as its first argument,
+ *    so a tenant query without one is a type error rather than a review comment.
+ * 2. **Runtime** -- every generated statement carries `organization_id = $n`,
+ *    and the scope exposes no `query()` escape hatch, so a statement missing the
+ *    predicate cannot be written without deliberately going around this
+ *    abstraction.
  *
  * The legacy CRM leaked across tenants because `company_detail`'s contact query
- * simply omitted `organization_id`. Here that class of bug is unrepresentable.
+ * omitted `organization_id`. That bug class is unrepresentable here.
  *
  * All values are bound parameters. Dynamic identifiers (sort columns, filter
- * keys) go through `allowlist()` which throws on anything unrecognised
- * (RULE 40) -- the one place a SQL fragment is assembled from a string.
+ * keys) go through `allowlist()`, which throws on anything unrecognised (RULE
+ * 40) -- the one place a SQL fragment is assembled from a string.
  */
 import type { DbClient } from '../db/driver.ts';
 import { getDb } from '../db/driver.ts';
 import { badRequest } from '../lib/errors.ts';
 import { logger } from '../lib/logger.ts';
-import { tenantDenials } from '../lib/metrics.ts';
 
 export type Row = Record<string, unknown>;
 
@@ -78,25 +74,22 @@ export class TenantScope {
  }
 
  /**
- * Runs a best-effort write inside the current transaction without being able
- * to take the transaction down with it.
+ * Runs a best-effort write inside the current transaction without letting it
+ * take that transaction down.
  *
- * PostgreSQL aborts the *whole* transaction on any statement error, and that
- * is not recoverable by catching the exception in application code: every
- * later statement then fails with `25P02 current transaction is aborted`, and
- * the eventual COMMIT is silently downgraded to a ROLLBACK. An audit row that
- * failed to write therefore did not merely lose the audit row -- it discarded
- * the business write it was supposed to describe, while the caller still held
- * a `RETURNING` result and reported success.
+ * PostgreSQL aborts the *whole* transaction on any statement error and catching
+ * it in application code does not help: every later statement fails with `25P02
+ * current transaction is aborted`, and COMMIT is silently downgraded to ROLLBACK.
+ * A failed audit row therefore discarded the business write it was describing,
+ * while the caller still held a `RETURNING` result and reported success. That
+ * exact failure was reproduced -- a CHECK-rejected activity row made
+ * `createRecord` roll back, so a pipeline came back "created" and was never in
+ * the table.
  *
- * That exact failure was reproduced: an activity row rejected by a CHECK
- * constraint made the surrounding `createRecord` transaction roll back, so a
- * pipeline came back "created" from `RETURNING *` and was never in the table.
- *
- * The fix is the SQL idiom: a SAVEPOINT around the optional write. Failure
- * rolls back only to that point, the outer transaction stays usable, and the
- * commit still commits. Outside a transaction this degrades to a plain
- * try/catch, which is equally safe because there is nothing to poison.
+ * The fix is a SAVEPOINT around the optional write: failure rolls back only
+ * there, the outer transaction stays usable and still commits. Outside a
+ * transaction this degrades to try/catch, which is safe because there is nothing
+ * to poison.
  */
  async bestEffort<T>(label: string, fn: (scope: TenantScope) => Promise<T>): Promise<T | null> {
  if (!this.inTransaction) {
@@ -163,7 +156,6 @@ export function assertTenantPredicate(sql: string): void {
 // Module-level handle so TenantScope can default to the shared driver without
 // an import cycle between repositories and db/driver.
 let cachedDriver: DbClient | null = null;
-export function setDriver(db: DbClient): void { cachedDriver = db; }
 function driverRef(): DbClient {
  if (!cachedDriver) throw new Error('database driver not initialised');
  return cachedDriver;
@@ -190,31 +182,6 @@ export const allowlist = (value: string, permitted: readonly string[]): string =
 export type SortDirection = 'ASC' | 'DESC';
 export const direction = (v: string | undefined): SortDirection =>
  String(v ?? '').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
-
-//  query helpers 
-export type QueryOptions = { limit: number; offset?: number };
-
-/** SELECT with a mandatory tenant predicate. */
-export async function selectAll<T extends Row = Row>(
- scope: TenantScope,
- sql: string,
- params: readonly unknown[] = [],
-): Promise<T[]> {
- return scope.query<T>(sql, params);
-}
-
-export async function selectOne<T extends Row = Row>(
- scope: TenantScope,
- sql: string,
- params: readonly unknown[] = [],
-): Promise<T | null> {
- return scope.queryOne<T>(sql, params);
-}
-
-/** Marks a cross-tenant access attempt in metrics for alerting. */
-export const noteTenantDenial = (resource: string): void => {
- tenantDenials.inc({ resource });
-};
 
 /**
  * Runs a parameterized INSERT.
@@ -252,24 +219,6 @@ export async function countScoped(
  return r.rows[0]?.n ?? 0;
 }
 
-/**
- * Keyset (cursor) pagination over `(sort_column, id)`.
- * Both are already allowlisted by the caller; we only bind their values.
- */
-export function keysetClause(
- sortColumn: string,
- dir: SortDirection,
- cursor: { t: string; id: string } | undefined,
- offsetParamIndex: number,
-): { sql: string; params: unknown[] } {
- if (!cursor) return { sql: '', params: [] };
- const cmp = dir === 'ASC' ? '>' : '<';
- return {
- sql: `AND (${sortColumn}, id) ${cmp} ($${offsetParamIndex}, $${offsetParamIndex + 1})`,
- params: [cursor.t, cursor.id],
- };
-}
-
 //  column/table registries 
 /** Every table a repository may touch. Anything else is rejected. */
 export const ALL_TABLES = [
@@ -283,8 +232,6 @@ export const ALL_TABLES = [
  'idempotency_keys',
 ] as const;
 
-const COLUMN_RE = /^[a-z_][a-z0-9_]{0,40}$/;
-export const isColumn = (v: string): boolean => COLUMN_RE.test(v);
 
 /** Column allowlist for UPDATE/INSERT fragments. */
 export const ALL_COLUMNS: readonly string[] = [

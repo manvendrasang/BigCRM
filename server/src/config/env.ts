@@ -357,11 +357,5 @@ function build(): Env {
 
 export const env: Env = build();
 
-/** Validates the config a second time so tests can assert fail-closed behaviour. */
-export function loadEnvFrom(source: NodeJS.ProcessEnv = process.env): Env {
- const saved = process.env;
- process.env = { ...source };
- try { return build(); } finally { process.env = saved; }
-}
 
 export const STORAGE_SIGNING_SECRET = secret('STORAGE_SIGNING_SECRET', 32);

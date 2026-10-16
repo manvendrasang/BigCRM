@@ -1,22 +1,17 @@
 /**
  * Organization, membership, teams and invitations.
  *
- * The invitation flow is the most important thing here. Legacy ticket-system had
- * three compounding defects in it, all verified:
- * 1. `accept_invite` added an *existing* user to the organization without ever
- * checking their password -- holding the token was sufficient.
- * 2. The raw invite token was returned in the API response body AND printed to
- * stdout by the console email provider.
- * 3. `InviteIn.role` validated against all five roles including `owner`, so an
- * admin could mint an owner-level invitation even though the HTML form only
- * offered four.
+ * The invitation flow carries three defects the legacy ticket-system had, all
+ * verified: `accept_invite` added an *existing* user without checking their
+ * password; the raw token was returned in the response body and printed to
+ * stdout by the console email provider; and `InviteIn.role` accepted `owner`,
+ * so an admin could mint an owner-level invitation the HTML form never offered.
  *
  * Each is fixed: tokens never leave the server, acceptance requires proof of
- * control of the mailbox or an authenticated identity, and the role offered is
- * bounded by the inviter's own authority.
+ * mailbox control or an authenticated identity, and the role is bounded by the
+ * inviter's own authority.
  */
 import { randomBytes } from 'node:crypto';
-import { env } from '../config/env.ts';
 import { initDriver, TenantScope } from '../repositories/base.ts';
 import type { DbClient } from '../db/driver.ts';
 import { badRequest, conflict, forbidden, notFound, validationFailed } from '../lib/errors.ts';
@@ -60,8 +55,8 @@ export async function updateOrganization(
 ): Promise<OrgRow> {
  const db = await initDriver();
  const before = await getOrganization(actor);
- // RULE 33: explicit allowlist. No client value ever reaches the SET clause
- // unless it appears here.
+ // RULE 33: explicit allowlist -- no client value reaches the SET clause unless
+ // it appears here.
  const entries = ORG_UPDATABLE
  .filter((k) => patch[k] !== undefined && patch[k] !== null)
  .map((k) => [k, String(patch[k]).trim().slice(0, 160)] as const);
@@ -186,9 +181,9 @@ export async function createMember(
  const userId = newId();
  const now = nowIso();
  await db.transaction(async (tx) => {
-  // email_verified_at is set at creation: the address was vetted by the admin
-  // who typed it and never needs a mailbox round-trip. default_org_id matches
-  // registerUser so tenant resolution does not depend on insert order at login.
+  // email_verified_at is set at creation: the admin who typed the address
+  // vetted it, so no mailbox round-trip is needed. default_org_id matches
+  // registerUser so tenant resolution does not depend on insert order.
   await tx.query(
    `INSERT INTO users (id, email, email_normalized, name, password_hash,
      email_verified_at, password_changed_at, default_org_id, created_at, updated_at)
@@ -201,7 +196,7 @@ export async function createMember(
    [newId(), actor.organizationId, userId, input.role, now],
   );
   // Same transaction as the inserts: an account never exists without its audit
-  // trail. No before -- creation has no prior state to diff.
+  // trail. No `before` -- creation has no prior state.
   await writeAudit(tx, {
    organizationId: actor.organizationId, actorId: actor.userId, actorRole: actor.role,
    action: 'member.created', entityType: 'user', entityId: userId,
@@ -279,8 +274,7 @@ export async function changeMemberRole(
  'UPDATE organization_members SET role = $1, updated_at = $2 WHERE organization_id = $3 AND user_id = $4',
  [nextRole, nowIso(), actor.organizationId, targetUserId]);
 
- // Changing someone's role must not leave them holding a live session minted
- // under the old authority: revoke and force re-authentication.
+ // A role change must not leave a live session minted under the old authority.
  const revoked = await revokeUserSessions(targetUserId, 'role_changed');
  await writeAudit(db, {
  organizationId: actor.organizationId, actorId: actor.userId, actorRole: actor.role,
@@ -297,26 +291,20 @@ export async function changeMemberRole(
 //  password reset (member requests; owner/admin completes) 
 
 /**
- * A member asks the office to set a new password.
+ * A member asks the office to set a new password. There is no self-service reset
+ * mail to rely on, so the flow is deliberately human: the signed-in member asks,
+ * every owner and admin is notified, and one of them types a new password by
+ * hand. The request is a row rather than an inferred state so it can be
+ * de-duplicated (one open request per member) and marked resolved when handled.
  *
- * There is no self-service reset mail a member can rely on here, so the flow is
- * deliberately human: the member -- already signed in, since the request button
- * lives on the dashboard -- asks, every owner and admin is notified, and one of
- * them types a new password by hand. The request is a row rather than an
- * inferred state so it can be de-duplicated (one open request per member) and
- * marked resolved when handled.
+ * Two preconditions, enforced here rather than only in the UI: the account must
+ * have signed in at least once (a brand new account still holds the credentials
+ * handed over at creation, so it has not activated this path), and an owner may
+ * not request -- nobody but an owner can reset an owner, so an admin could never
+ * complete it.
  *
- * Two preconditions, both enforced here rather than only in the UI:
- * 1. The account must have logged in at least once (`last_login_at`). A brand
- *    new account still holds the credentials handed over at creation; it has
- *    not "activated" the request path. The caller is authenticated so this is
- *    normally already true -- the check documents the rule and refuses a
- *    crafted request for a never-used account.
- * 2. An owner may not request: nobody but an owner can reset an owner, so the
- *    request could never be completed by an admin anyway.
- *
- * Repeating the request while one is open is idempotent: the same request row
- * is returned and no further notifications are sent.
+ * Repeating the request while one is open is idempotent: the same row is
+ * returned and no further notifications are sent.
  */
 export async function requestPasswordReset(
  actor: ActorRef,
@@ -348,8 +336,7 @@ export async function requestPasswordReset(
   VALUES ($1,$2,$3,'pending',$4)`,
  [requestId, actor.organizationId, actor.userId, now]);
 
- // Notify the people who can actually fulfil it: every owner and admin in this
- // organization except the requester (an admin asking should not notify self).
+ // Notify everyone who can fulfil it: every owner and admin except the requester.
  const staff = await db.query<{ user_id: string }>(
  `SELECT user_id FROM organization_members
   WHERE organization_id = $1 AND role IN ('owner','admin') AND user_id <> $2`,
@@ -387,19 +374,15 @@ export async function requestPasswordReset(
 /**
  * An owner or admin sets a member's password directly.
  *
- * The password is TYPED by the human handling the request (no generated secret
- * is returned), so it goes through the same strength policy as any other
- * password change. Authority is `canResetPassword`: an owner may reset anyone
+ * The password is typed by the human handling the request -- no generated
+ * secret is returned -- so it goes through the same strength policy as any
+ * other change. Authority is `canResetPassword`: an owner may reset anyone
  * including an owner; an admin may reset anyone except an owner.
  *
- * On success:
- * * every session the member holds is revoked -- a password a second person
- *   knows must not leave existing sessions alive;
- * * any open reset request is closed (status `completed`, who and when);
- * * the change is written to the audit log and the security-event log.
- *
- * The audit row carries the email and role of the target but never the
- * password or its hash.
+ * On success every session the member holds is revoked (a password a second
+ * person knows must not leave sessions alive), any open reset request is closed,
+ * and the change is written to the audit and security-event logs. The audit row
+ * carries the target's email and role, never the password or its hash.
  */
 export async function resetMemberPassword(
  actor: ActorRef,
@@ -423,11 +406,10 @@ export async function resetMemberPassword(
  const targetUser = target.rows[0];
  if (!targetUser) throw notFound('Account not found.');
 
- // The policy reasons are written in the first person ("your email address"),
- // which is right when you are changing your own password and wrong here: the
- // actor is an owner or admin and the subject is somebody else. The three
- // personal-data reasons are reworded to name whose data is being checked, so a
- // rejected attempt says which rule to break instead of sounding like a bug.
+ // The policy reasons say "your email address", which is right for a
+ // self-service change and wrong here: the actor is an admin, the subject is
+ // someone else. The three personal-data reasons are reworded to name whose data
+ // is being checked, so a rejection says which rule to break.
  const SUBJECT_REWORD: Record<string, string> = {
  contains_email: "Password must not contain the member's email address.",
  contains_domain: "Password must not contain the member's email domain.",
@@ -463,8 +445,8 @@ export async function resetMemberPassword(
  });
  });
 
- // Outside the transaction, like every other session revocation: the password
- // change is the durable fact; killing sessions is best-effort follow-up.
+ // Outside the transaction, like every session revocation: the password change
+ // is the durable fact, killing sessions is best-effort follow-up.
  const sessionsRevoked = await revokeUserSessions(targetUserId, 'password_reset_by_admin');
  securityLog('member.password_reset', {
  organizationId: actor.organizationId, userId: actor.userId,
@@ -476,22 +458,18 @@ export async function resetMemberPassword(
 /**
  * Transfers ownership to another member (RULE 27).
  *
- * This is the only path by which a second owner can ever exist -- `owner` is
- * unassignable through an invitation and through `changeMemberRole`, because an
- * owner can outrank every other role and demote or remove anyone. Minting a
- * second owner by invitation would hand that power to whoever accepted the link.
+ * The only path by which a second owner can exist: `owner` is unassignable
+ * through an invitation or `changeMemberRole`, because an owner outranks every
+ * role and could demote or remove anyone. Minting one by invitation would hand
+ * that power to whoever accepted the link.
  *
- * Guards, in order:
- * 1. Only a current owner may transfer (the route also enforces `requireRole`).
- * 2. Re-authentication is required. An attacker who steals an owner session
- * cookie still cannot transfer ownership without the password.
- * 3. The successor must already be an active member of *this* organization.
- * 4. Transferring to yourself is a no-op and is refused as such.
- * 5. The demotion of the outgoing owner runs in the same transaction as the
- * promotion, so the organization can never be left with zero owners.
- *
- * Both users' sessions are revoked: their authority has changed in both
- * directions, and a token minted under the old roles must not survive.
+ * Guards, in order: only a current owner may transfer; re-authentication is
+ * required, so a stolen owner cookie is not enough; the successor must already be
+ * an active member of this organization; transferring to yourself is refused;
+ * and the outgoing owner's demotion runs in the same transaction as the
+ * promotion, so the organization can never be left with zero owners. Both users'
+ * sessions are revoked, since a token minted under the old roles must not
+ * survive.
  */
 export async function transferOwnership(args: {
  actor: ActorRef;
@@ -542,8 +520,8 @@ export async function transferOwnership(args: {
 
  await db.transaction(async (tx) => {
  const scope = new TenantScope(actor.organizationId, tx);
- // Promote first, then demote. The order matters: the intermediate state
- // always has at least two owners, never zero, even if the demote fails.
+ // Promote first, then demote: the intermediate state always has two owners,
+ // never zero, even if the demote fails.
  await tx.query(
  `UPDATE organization_members SET role = 'owner', updated_at = $1
  WHERE organization_id = $2 AND user_id = $3 AND status = 'active'`,
@@ -562,13 +540,10 @@ export async function transferOwnership(args: {
  throw conflict('The transfer would leave the organization without an owner.');
  }
 
- // Inside a transaction a swallowed audit error poisons it: PostgreSQL aborts
- // the whole transaction on any statement error, and `COMMIT` on an aborted
- // transaction performs a ROLLBACK and returns the tag "ROLLBACK" *without
- // raising*. The promotion and demotion would vanish while this function
- // still returned a success shape and the route answered 200. `bestEffort`
- // wraps the write in a SAVEPOINT so a failed audit row costs only the audit
- // row. See repositories/base.ts for the full rationale.
+ // A swallowed audit error would poison the transaction: PostgreSQL aborts on
+ // any statement error, and COMMIT on an aborted transaction rolls back *without
+ // raising*, so the promotion would vanish while this returned success. See
+ // repositories/base.ts.
  await scope.bestEffort('transfer_ownership_audit', async (auditScope) => {
  await writeAudit(auditScope.unsafe, {
  organizationId: actor.organizationId, actorId: actor.userId, actorRole: 'owner',
@@ -611,8 +586,8 @@ export async function removeMember(actor: ActorRef, targetUserId: string): Promi
  await db.transaction(async (tx) => {
  await tx.query('DELETE FROM organization_members WHERE organization_id = $1 AND user_id = $2',
  [actor.organizationId, targetUserId]);
- // Unassign their work so nothing dangles (the TaskFlow lesson, done
- // transactionally rather than as two independent writes).
+ // Unassign their work so nothing dangles -- transactionally, not as two
+ // independent writes.
  for (const [table, col] of [['contacts', 'owner_id'], ['companies', 'owner_id'],
  ['leads', 'owner_id'], ['deals', 'owner_id'], ['tasks', 'assignee_id']] as const) {
  await tx.query(
@@ -933,15 +908,6 @@ export async function writeAudit(db: DbClient, args: {
  }
 }
 
-/** Convenience wrapper used by record services. */
-export const auditFor = (actor: ActorRef, request: Request) => ({
- ip: request.clientIp ?? null,
- userAgent: String(request.get('user-agent') ?? '').slice(0, 300),
- requestId: request.requestId ?? null,
-});
-
-type Request = { clientIp?: string; get(name: string): string | undefined; requestId?: string };
 
 export { assignableRoles, can, isRole, canAssignRole };
 export type { Role };
-export const _internal = { TenantScope, env };

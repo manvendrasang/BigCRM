@@ -68,27 +68,3 @@ export function parsePageInput(first: unknown, after: unknown): PageInput {
 
 /** Row shape expected by the cursor builder: needs the sort key used in the query. */
 export type CursorRow = { id: string; cursor_sort_value?: string | number | null };
-
-export function buildPage<T extends CursorRow>(
- rows: T[],
- first: number,
- totalCount?: number | null,
-): PageResult<T> {
- const hasNextPage = rows.length > first;
- const data = hasNextPage ? rows.slice(0, first) : rows;
- const toCursor = (r: T | undefined): string | null => {
- if (!r) return null;
- const sort = r.cursor_sort_value ?? r.id;
- return encodeCursor({ t: String(sort), id: String(r.id) });
- };
- return {
- data,
- pageInfo: {
- hasNextPage,
- hasPreviousPage: false,
- startCursor: toCursor(data[0]),
- endCursor: toCursor(data[data.length - 1]),
- },
- totalCount: totalCount ?? null,
- };
-}

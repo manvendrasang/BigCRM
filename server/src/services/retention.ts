@@ -1,33 +1,17 @@
 /**
- * Retention scheduler (BIG-12).
+ * Retention scheduler.
  *
- * The retention windows were configured but nothing ever ran them, so every
- * deployment would have accumulated sessions, audit rows, notifications and
- * export artefacts indefinitely. That is not a disk problem -- it is a data
- * minimisation problem (GDPR Art. 5(1)(e): storage limitation), and an audit
- * table nobody prunes is also an audit table nobody can afford to keep.
+ * Deleted: expired sessions, consumed/expired tokens, read or expired
+ * notifications, finished exports, unconsumed MFA challenges. `audit_logs` is
+ * kept to `RETENTION_AUDIT_DAYS` (default 730) and never deleted on any code
+ * path -- the append-only trigger blocks UPDATE and DELETE, so audit
+ * truncation is a privileged maintenance operation, not a scheduler's job.
  *
- *  What is deleted, and what is never deleted 
- *
- * Deleted: expired sessions, consumed/expired one-time tokens, read or expired
- * notifications, finished export artefacts, unconsumed MFA challenges.
- * Kept: `audit_logs` up to `RETENTION_AUDIT_DAYS` (default 730 = 2 years),
- * and NEVER deleted on any code path. The append-only trigger blocks
- * UPDATE and DELETE, so audit truncation is a privileged maintenance
- * operation, not something a scheduler does.
- *
- *  Deliberate properties 
- *
- * - **Batched.** Each purge deletes at most `batchSize` rows per table per run.
- * An unbounded `DELETE` on a large table takes a lock that stalls the API,
- * which is a self-inflicted outage in the name of housekeeping.
- * - **Tenant-agnostic on purpose.** These are system tables keyed by expiry,
- * not tenant data; no tenant predicate applies and none should.
- * - **Counts, then deletes.** The result reports how many rows went, so the
- * job is observable. A purge that silently deletes nothing looks identical to
- * a purge that never ran.
- * - **Never throws into the timer.** A failed sweep is logged and the schedule
- * continues; one bad night must not stop retention for the next month.
+ * Deliberately batched (an unbounded DELETE takes a lock that stalls the API),
+ * tenant-agnostic (these are system tables keyed by expiry), counting rather
+ * than silent (a purge that deleted nothing is indistinguishable from one that
+ * never ran), and non-throwing into the timer (one bad night must not stop
+ * retention for the next month).
  */
 import { env } from '../config/env.ts';
 import { initDriver } from '../repositories/base.ts';
@@ -55,11 +39,11 @@ export type PurgeResult = {
 };
 
 /**
- * Advisory-lock key for the retention sweep: two int4s reading "bi"/"gc" in
- * ASCII, i.e. bigcrm. Fixed and documented because every replica in every
- * deployment must derive the identical key -- a key derived from anything that
- * varies per process, host or release would leave each replica holding a
- * different lock, and all of them would sweep at once.
+ * Advisory-lock key for the sweep: two int4s reading "bi"/"gc" in ASCII, i.e.
+ * bigcrm. Fixed and documented because every replica in every deployment must
+ * derive the identical key -- one derived from anything that varies per process
+ * or host would leave each replica holding a different lock, and all would sweep
+ * at once.
  */
 export const RETENTION_LOCK_CLASS = 0x6269; // 25193 -- 'bi'
 export const RETENTION_LOCK_OBJECT = 0x6763; // 26467 -- 'gc'
@@ -72,11 +56,9 @@ async function purgeBatched(
  cutoff: string,
  limit: number,
 ): Promise<number> {
- // `ctid` gives a stable, indexed-enough handle for a bounded delete without
- // needing a surrogate key on every purgeable table.
- // `$1` is the batch limit, `$2` the cutoff -- every `where` clause above is
- // written against `$2`. Binding only the limit produced "supplies 1
- // parameters, but prepared statement requires 2" on every table.
+ // `ctid` is a stable handle for a bounded delete, avoiding a surrogate key on
+ // every purgeable table. `$1` is the batch limit and `$2` the cutoff; every
+ // `where` above is written against `$2`.
  const r = await db.query(
  `WITH doomed AS (
  SELECT ctid FROM ${table} WHERE ${where} LIMIT $1
@@ -89,39 +71,22 @@ async function purgeBatched(
 }
 
 /**
- * One sweep. Safe to call at any time; a no-op when `RETENTION_PURGE_ENABLED`
- * is false, which is the default so a developer machine never deletes anything.
+ * One sweep. A no-op when `RETENTION_PURGE_ENABLED` is false, which is the
+ * default so a developer machine never deletes anything.
  *
- *  Leader election 
- *
- * The scheduler runs in every replica. Without coordination, N replicas sweep
- * simultaneously: N× the lock contention on tables the API is reading, N× the
- * I/O, and N concurrent multi-thousand-row deletes on the same rows -- all for a
- * result where the loser of each race simply deletes nothing. It was recorded
- * as accepted risk A5 for exactly that reason, and this closes it.
- *
- * The mechanism is a PostgreSQL advisory lock, chosen over a lease table for
- * one decisive property: **the lock dies with the connection.** A replica that
- * is SIGKILLed mid-sweep holds nothing, so the next tick on any replica proceeds
- * within seconds. A lease row needs a separate reaper, and a reaper that guesses
+ * The scheduler runs in every replica, so the sweep is leader-elected. A
+ * PostgreSQL advisory lock is used rather than a lease row because **the lock
+ * dies with the connection**: a replica SIGKILLed mid-sweep holds nothing and
+ * the next tick proceeds. A lease needs a reaper, and a reaper that guesses
  * wrong either blocks retention indefinitely or lets two replicas sweep at once.
+ * `pg_try_advisory_lock`, not the blocking variant: losing the election is a
+ * normal outcome, not something to wait on.
  *
- * `pg_try_advisory_lock` rather than `pg_advisory_lock`: blocking would park a
- * replica on a timer callback while another sweeps. Losing the election is a
- * normal, expected outcome, not something to wait on.
- *
- *  Why the whole sweep holds one connection 
- *
- * Advisory locks are held per *session*, not per statement. If the lock were
- * taken via `db.query()` on the pool, each subsequent statement would land on an
- * arbitrary different connection, and the lock would be guarding nothing while
- * its unlock released some other session's lock. `withConnection` pins one
- * session for the entire sweep, which is what makes the lock mean anything.
- *
- * Each delete still autocommits individually -- this is deliberately *not* one
- * transaction. The property that a failure on one table must not abort the rest
- * depends on that, and a single large transaction spanning ten tables would
- * hold row locks across the whole sweep.
+ * The sweep runs on one pinned connection: advisory locks are per *session*, so
+ * taking the lock on the pool would let later statements land elsewhere,
+ * guarding nothing and releasing someone else's lock. Each delete still
+ * autocommits individually -- deliberately not one transaction, so a failure on
+ * one table cannot abort the rest.
  */
 export async function runRetentionSweep(now: Date = new Date()): Promise<PurgeResult> {
  const result: PurgeResult = { ranAt: now.toISOString(), rows: [], totalDeleted: 0, errors: [], role: 'not-needed' };

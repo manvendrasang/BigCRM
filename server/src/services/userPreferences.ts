@@ -1,24 +1,11 @@
 /**
- * Per-account appearance preference.
+ * Per-account appearance preference. Cosmetic, and carries no authority:
+ * nothing here touches roles, sessions or audit-relevant state.
  *
- * One column, three values, one caller. It is deliberately its own module
- * rather than a field on the org service: the theme is a property of the person,
- * it is cosmetic, and it carries no authority -- nothing in this file touches
- * roles, sessions or audit-relevant state.
- *
- * Why server-side at all, given localStorage would have been less work:
- *
- * * The login screen must paint light for whoever is standing at the machine,
- *   not in whatever theme the last person left behind. A browser-scoped
- *   preference cannot express that, because the person who left it may not be
- *   the person arriving.
- * * The preference has to survive the logout-on-window-close behaviour: with a
- *   session that dies with the tab, localStorage is the only thing that would
- *   still be around, and it is the one thing that must NOT survive a shared
- *   machine.
- *
- * So the account is the storage, `light` is the default for anyone who never
- * chose, and the client applies it only once the caller is authenticated.
+ * Server-side rather than localStorage for two reasons: the login screen must
+ * paint light for whoever is standing at the machine rather than inheriting the
+ * last person's theme, and since the session now dies with the window,
+ * localStorage is the one thing that would still survive on a shared desk.
  */
 import { initDriver } from '../repositories/base.ts';
 import { validationFailed } from '../lib/errors.ts';

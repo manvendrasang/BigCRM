@@ -14,7 +14,6 @@
  */
 import { env } from '../config/env.ts';
 import { logger } from '../lib/logger.ts';
-import { newSecret } from '../lib/ids.ts';
 
 export type EmailMessage = {
  to: string;
@@ -97,29 +96,12 @@ export function getEmailProvider(): EmailProvider {
  return provider;
 }
 
-export const setEmailProvider = (p: EmailProvider): void => { provider = p; };
 
 //  templates 
 /** Builds an absolute, single-use, expiring URL. The token appears only here. */
 const link = (path: string, token: string): string => `${env.publicUrl}${path}?token=${encodeURIComponent(token)}`;
 
-export const sendVerificationEmail = async (email: string, token: string): Promise<void> => {
- const url = link('/verify-email', token);
- await getEmailProvider().send({
- to: email,
- subject: 'Confirm your email address',
- text: `Welcome to BigCRM.\n\nConfirm your email address:\n${url}\n\nThis link expires in 24 hours. If you did not create an account you can ignore this message.`,
- });
-};
 
-export const sendPasswordResetEmail = async (email: string, token: string): Promise<void> => {
- const url = link('/reset-password', token);
- await getEmailProvider().send({
- to: email,
- subject: 'Reset your password',
- text: `A password reset was requested for your account.\n\nReset your password:\n${url}\n\nThis link expires in 15 minutes and can be used once. If you did not request a reset, no action is needed and your password is unchanged.`,
- });
-};
 
 export const sendInvitationEmail = async (args: {
  email: string; token: string; organizationName: string; inviterName: string; role: string;
@@ -132,21 +114,3 @@ export const sendInvitationEmail = async (args: {
  });
 };
 
-export const sendSecurityAlertEmail = async (email: string, event: string, occurredAt: string): Promise<void> => {
- await getEmailProvider().send({
- to: email,
- subject: 'Security alert on your account',
- text: `We noticed a security-relevant event on your account.\n\nEvent: ${event}\nTime: ${occurredAt}\n\nIf this was not you, reset your password and revoke all active sessions immediately.`,
- });
-};
-
-/** Test seam: lets a suite capture what would have been emailed. */
-export const __testOnlyCapture = (): { messages: EmailMessage[] } & { provider: EmailProvider } => {
- const messages: EmailMessage[] = [];
- const provider: EmailProvider = {
- name: 'capture',
- async send(msg) { messages.push(msg); },
- };
- return { messages, provider };
-};
-export const __unused = newSecret;

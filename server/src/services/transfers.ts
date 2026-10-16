@@ -1,37 +1,24 @@
 /**
- * Import / export (item 8).
+ * Import / export.
  *
- * CSV export streams an org's records with formula-injection neutralisation;
- * CSV import validates every row against the record spec before writing
- * anything. Both run through job rows (`export_jobs`, `import_jobs`) so a
- * large transfer is observable and resumable rather than a request that times
- * out halfway.
+ * Both run through job rows (`export_jobs`, `import_jobs`), so a large transfer
+ * is observable and resumable rather than a request that times out halfway.
  *
- *  Export 
+ * Export streams the org's records with formula-injection neutralisation: every
+ * cell passes through `sanitizeCsvCell`, which prefixes `=`, `+`, `-` and `@`,
+ * so a contact named `=cmd|...` cannot execute in the recipient's spreadsheet.
+ * The job row records row count and byte size; the file goes to storage with a
+ * 7-day expiry. Export is admin+ at the route layer -- it contains the org's
+ * entire table, so member-level export would be a bulk-exfiltration primitive
+ * wearing a feature costume.
  *
- * Synchronous for now: the query pages through the table in batches and the
- * CSV is built in memory, bounded by `MAX_EXPORT_ROWS`. Every cell passes
- * through `sanitizeCsvCell`, which prefixes formula triggers (`=`, `+`, `-`,
- * `@`) so a contact named `=cmd|...` cannot become code execution in the
- * recipient's spreadsheet. The job row records the row count and byte size;
- * the file itself is written to the local storage driver with a 7-day expiry.
- *
- * An export is admin+ only at the route layer. The data it contains is the
- * org's entire table, so member-level export would be a bulk-exfiltration
- * primitive wearing a feature costume.
- *
- *  Import 
- *
- * Validating, not blind: the header row must match writable columns for the
- * entity type, every row is parsed with the CSV bounds (max rows, max columns,
- * no NUL/control bytes), and rows are created through `createRecord` -- which
- * means every row gets the same validation, tenant scoping, and audit trail
- * as a single create. A row that fails validation is counted in `skipped_count`
- * with its line number, not silently dropped and not aborting the import.
- *
- * `idempotency_key` makes re-submission safe: uploading the same file twice
- * with the same key returns the original job rather than duplicating every
- * row. Without it, a retried request after a network blip doubles the data.
+ * Import validates rather than blits: the header must match writable columns,
+ * every row is parsed within the CSV bounds (max rows and columns, no NUL bytes),
+ * and rows are created through `createRecord`, so each gets the same validation,
+ * tenant scoping and audit trail as a single create. A failing row is counted in
+ * `skipped_count` with its line number -- not silently dropped, and not
+ * aborting the import. `idempotency_key` makes re-submission safe: without it a
+ * retry after a network blip doubles the data.
  */
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';

@@ -1,20 +1,16 @@
 /**
  * Internal-redirect guard.
  *
- * After signing in, the app returns the user to wherever they were headed. That
- * "wherever" comes from `location.state.from`, which `ProtectedRoute` fills from
- * `location.pathname` -- i.e. from the URL, which an attacker controls via a
- * crafted link.
- *
- * React Router's open-redirect advisory (GHSA-wrjc-x8rr-h8h6) is about
- * backslashes and protocol-relative forms being normalised into an absolute URL
- * by `<Link>` / `<Navigate>`. The fix is not "we don't use react-router
- * dangerously"; it is to refuse any destination that is not a plain internal
- * path, so the redirect target is decided here rather than by a parser.
+ * `ProtectedRoute` fills the post-sign-in destination from `location.pathname`,
+ * which an attacker controls via a crafted link. The open-redirect risk
+ * (GHSA-wrjc-x8rr-h8h6) is backslashes and protocol-relative forms being
+ * normalised into an absolute URL by `<Link>` / `<Navigate>`. So the target is
+ * decided here, not by a parser: anything that is not a plain internal path is
+ * refused.
  *
  * Accepted: `/dashboard`, `/contacts?page=2`
- * Refused: `//evil.com`, `https://evil.com`, `/\evil.com`, `/..%2f..%2f`,
- * `javascript:...`, `data:...`, empty, non-strings
+ * Refused: `//evil.com`, `https://evil.com`, `/\evil.com`, `javascript:...`,
+ * empty, non-strings
  */
 export const DASHBOARD_PATH = '/dashboard';
 

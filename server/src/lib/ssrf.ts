@@ -8,7 +8,6 @@
  */
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
-import { badRequest } from './errors.ts';
 
 export type UrlVerdict = { allowed: true; url: URL; addresses: string[] } | { allowed: false; reason: string };
 
@@ -177,8 +176,3 @@ export async function validateOutboundUrl(raw: unknown, opts: { protocols?: stri
  return { allowed: true, url, addresses };
 }
 
-export const assertOutboundUrl = async (raw: unknown, opts?: { protocols?: string[] }): Promise<URL> => {
- const v = await validateOutboundUrl(raw, opts);
- if (!v.allowed) throw badRequest(v.reason);
- return v.url;
-};

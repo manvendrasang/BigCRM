@@ -7,14 +7,13 @@
  * worker becomes a long-polling consumer and this module keeps its shape --
  * producers (`enqueue` callers) do not change.
  *
- * Claiming is one statement (`SELECT ... FOR UPDATE SKIP LOCKED` inside a
- * CTE feeding the UPDATE), so two workers racing the same row cannot both
- * win it -- on real PostgreSQL via row locks, on PGlite via session
- * serialisation. A crashed worker's claim is NOT auto-released (there is no
- * lease here, deliberately): a job stuck `claimed` is visible in the table
- * and re-runnable by hand, whereas an invisible lease turns a stuck job into
- * a duplicate execution. At-least-once with visible stuck rows beats
- * at-most-once with silent loss.
+ * Claiming is one statement (`SELECT ... FOR UPDATE SKIP LOCKED` in a CTE
+ * feeding the UPDATE), so two workers racing the same row cannot both win it.
+ *
+ * A crashed worker's claim is NOT auto-released -- there is deliberately no
+ * lease. A job stuck `claimed` is visible in the table and re-runnable by hand,
+ * whereas an invisible lease turns a stuck job into a duplicate execution.
+ * At-least-once with visible stuck rows beats at-most-once with silent loss.
  */
 import { getDb } from '../db/driver.ts';
 import type { DbClient } from '../db/driver.ts';

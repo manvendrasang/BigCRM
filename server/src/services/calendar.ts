@@ -1,16 +1,14 @@
 /**
- * Calendar: month-range agenda of meetings (timed activities) and dated tasks.
+ * Calendar: a month-range agenda of meetings (timed activities) and dated tasks.
  *
- * Two sources, one view. Meetings are `activities` rows of type `meeting`
- * whose `occurred_at` is the scheduled time; tasks surface by `due_date`.
- * Neither source is altered here -- this service only reads across them in one
- * tenant-scoped pass, so the numbers on the calendar and the numbers on the
- * record pages cannot disagree: same rows, same predicates.
+ * Two sources, one view. Meetings are `activities` rows of type `meeting` keyed
+ * on `occurred_at`; tasks surface by `due_date`. Neither source is altered
+ * here, so the calendar and the record pages cannot disagree: same rows, same
+ * predicates.
  *
- * Scheduling a meeting writes an activity row (the timeline on the record
- * detail page shows it too -- one write, two views). Invitations/attendees are
- * deliberately out of scope: there is no attendee model, so a meeting is a
- * timed note on an entity, and the API does not pretend otherwise (RULE 6).
+ * Scheduling writes an activity row, which the record timeline also shows --
+ * one write, two views. Attendees are deliberately out of scope: there is no
+ * attendee model, so a meeting is a timed note on an entity (RULE 6).
  */
 import { TenantScope } from '../repositories/base.ts';
 import type { DbClient } from '../db/driver.ts';

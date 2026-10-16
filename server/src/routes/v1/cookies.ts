@@ -1,20 +1,16 @@
 /**
- * Session cookie contract.
+ * Session cookie contract, in one place so `auth.ts` and `mfa.ts` cannot drift
+ * apart on the most security-sensitive pair of decisions in the service.
  *
- * Extracted so `auth.ts` and `mfa.ts` cannot drift apart on the single most
- * security-sensitive pair of decisions in the service.
- *
- * - **Access token** -- returned in the JSON body *and* set as an HttpOnly
- * cookie. The body exists for clients with no cookie jar (mobile, CLI); the
- * browser path uses the cookie, which script cannot read, so an XSS payload
- * cannot exfiltrate it.
- * - **Refresh token** -- HttpOnly cookie only. It never appears in a response
- * body, because it is the long-lived credential.
- * - **CSRF token** -- deliberately readable by same-origin script. It carries no
- * authority on its own: it is a synchroniser that a cross-site attacker
- * cannot read either, because the `HttpOnly` session cookie is equally out
- * of reach. Pairing it with `SameSite=Lax` and the Origin/Referer check in
- * `csrfGuard` gives three independent controls.
+ * - **Access token** -- in the JSON body *and* an HttpOnly cookie. The body
+ *   serves clients with no cookie jar (mobile, CLI); the browser uses the
+ *   cookie, which script cannot read, so XSS cannot exfiltrate it.
+ * - **Refresh token** -- HttpOnly cookie only. Never in a body: it is the
+ *   long-lived credential.
+ * - **CSRF token** -- deliberately readable by same-origin script, and carrying
+ *   no authority alone. A cross-site attacker cannot read it either, since the
+ *   session cookie is equally out of reach. With `SameSite=Lax` and the
+ *   Origin/Referer check in `csrfGuard`, that is three independent controls.
  */
 import express from 'express';
 import { env } from '../../config/env.ts';
@@ -53,11 +49,5 @@ export function setMfaChallengeCookie(res: express.Response, token: string, maxA
  res.cookie('bigcrm_mfa', token, { ...baseCookie, httpOnly: true, maxAge: maxAgeSec * 1000 });
 }
 
-export const cookieNames = {
- access: env.jwt.cookieName,
- refresh: `${env.jwt.cookieName}_refresh`,
- csrf: env.jwt.csrfCookieName,
- mfaChallenge: 'bigcrm_mfa',
-} as const;
 
 export { baseCookie };

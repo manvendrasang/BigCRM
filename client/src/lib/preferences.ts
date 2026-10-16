@@ -3,15 +3,11 @@ import { api } from './api';
 /**
  * The caller's own appearance preference.
  *
- * Kept apart from `workspace.ts` on purpose: that module is about the
- * organisation (members, invitations, views) and is gated by org permissions,
- * whereas this is a property of the person reading it. A viewer holds none of
- * those org permissions and must still be able to read and change this, so
- * merging the two would invite a permission check that does not belong here.
- *
- * No localStorage mirror. The account is the storage (see theme.tsx), and a
- * cached copy in the browser is precisely the thing that leaks one person's
- * choice to the next person at the same machine.
+ * Separate from `workspace.ts` on purpose: that module is about the organisation
+ * and is gated by org permissions, whereas a viewer holds none of those and
+ * must still control their own theme. No localStorage mirror -- the account is
+ * the storage, and a cached copy is exactly what leaks one person's choice to
+ * the next person at the same machine.
  */
 export type ThemePreference = 'light' | 'dark' | 'system';
 
