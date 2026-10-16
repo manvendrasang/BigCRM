@@ -8,6 +8,7 @@ import {
  setAccessToken,
  setUnauthenticatedHandler,
 } from './api';
+import { clearSessionActive, markSessionActive, wasSignedOutOnOpen } from './sessionWindow';
 
 /** The subset of the server's `PublicUser` the UI actually renders. */
 export interface SessionUser {
@@ -116,6 +117,21 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
  useEffect(() => {
  let cancelled = false;
 
+ // A tab that booted after the window was closed must not reuse the session the
+ // dead window left behind. `initSessionWindow` has already fired the logout
+ // beacon; probing `/auth/me` here would race it (the cookie stays valid for a
+ // few more milliseconds), so the dashboard could render and then vanish.
+ // Short-circuiting the probe does not soften the sign-out -- the server
+ // revokes the session regardless; it only avoids displaying a session that is
+ // already over.
+ if (wasSignedOutOnOpen()) {
+ clearTokens();
+ setUser(null);
+ setActor(null);
+ setIsLoading(false);
+ return;
+ }
+
  // `void` + an explicit catch: without this the IIFE's rejection is an
  // unhandled promise rejection, which in a browser surfaces as a console error
  // and leaves `isLoading` stuck true forever.
@@ -125,10 +141,14 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
  if (cancelled) return;
  setUser(me.user);
  setActor(toActor(me));
+ // The cookie outlived the page (a refresh, or the tab was never closed), so a
+ // session is live again and a future tab close has to end it.
+ markSessionActive();
  } catch {
  // No usable session. Not an error worth showing on first paint.
  if (!cancelled) {
  clearTokens();
+ clearSessionActive();
  setUser(null);
  setActor(null);
  }
@@ -164,6 +184,11 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
  setAccessToken(session.accessToken ?? null);
  setUser(session.user);
  setActor(toActor(session));
+ // A session now exists, so closing this window must end it. Set here rather
+ // than derived from `actor` because a transient loss of the actor (a failed
+ // request, a 401 during a refresh) does not mean the cookie is gone, and
+ // clearing the marker then would silently disable the sign-out.
+ markSessionActive();
  } catch (err) {
  const message = describe(err);
  setError(message);
@@ -178,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
  // Revoking server-side is best-effort; the local session must still end.
  } finally {
  clearTokens();
+ clearSessionActive();
  setUser(null);
  setActor(null);
  }

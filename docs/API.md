@@ -84,7 +84,7 @@ about HTTP behaviour, and at the service layer otherwise.
 | POST | `/api/v1/auth/register` | -- | Atomic: user + org + membership. **Closed by default** (`BLOCK_NEW_ACCOUNTS=true`) -> 503 `REGISTRATION_CLOSED`; accounts are created in-house |
 | POST | `/api/v1/auth/login` | -- | Timing-equalised; per-account limit; returns `mfaRequired` when enrolled |
 | POST | `/api/v1/auth/refresh` | -- | Rotating, reuse -> family revoked |
-| POST | `/api/v1/auth/logout` | session | Revokes the current session |
+| POST | `/api/v1/auth/logout` | session | Revokes the current session and clears the cookies. Also the target of the client's window-close beacon (see *Session lifetime*) |
 | POST | `/api/v1/auth/logout-all` | session | Revokes every session |
 | GET | `/api/v1/auth/sessions` | session | Active sessions + device labels |
 | DELETE | `/api/v1/auth/sessions/{id}` | session | Scoped to the caller; 404 for another user's id |
@@ -94,6 +94,46 @@ about HTTP behaviour, and at the service layer otherwise.
 | POST | `/api/v1/auth/verify-email` | -- | Single-use token |
 | POST | `/api/v1/auth/verify-email/resend` | session | -- |
 | GET | `/api/v1/auth/me` | session | User + org + role |
+| GET | `/api/v1/auth/me/preferences` | session | The caller's own appearance preference. No org permission required -- a viewer must still control their own theme |
+| PUT | `/api/v1/auth/me/preferences` | session | `{"theme":"light"\|"dark"\|"system"}`. CSRF-guarded; unknown value -> 422; unknown stored value reads as `light` |
+
+### Appearance preference
+
+The theme belongs to the **account**, not the browser, and the page always paints
+light until the caller is authenticated.
+
+* `theme-init.js` sets `data-theme="light"` before the first frame, unconditionally.
+* Once `/auth/me` reports a session, `AccountTheme` reads
+  `GET /auth/me/preferences` and applies the account's stored preference.
+* An account that never chose one reads `light`, never the OS.
+
+Browser storage is deliberately not used. Two reasons, both of which the
+window-close sign-out above created: the login screen would otherwise be painted
+in whatever theme the last person at a shared machine left behind, and
+`localStorage` is the one thing that survives a session that is designed not to.
+
+The honest cost: a dark-theme user sees light for the moment between opening the
+page and signing in.
+
+### Session lifetime
+
+A session ends when the browser window is closed. The client decides this on the
+*next* page load rather than in the unload handler, because the browser cannot
+distinguish "closed" from "refreshed" there; `src/lib/sessionWindow.ts` documents
+the mechanism. `POST /api/v1/auth/logout` is the only endpoint involved and it is
+unchanged -- there is no separate close-detection route.
+
+Consequences worth knowing:
+
+* **A refresh keeps you signed in.** Only closing the window (or the last tab)
+  ends the session.
+* **Closing one of several tabs does not sign out the others.** The client keeps
+  a per-tab registry and only ends the session when no other tab is alive.
+* **A new tab opened while signed in does not sign you out.** Only a tab opened
+  after the *last* previous tab closed ends it.
+* The beacon is best effort. If it does not arrive (a hard kill), the next page
+  load still refuses to reuse the session, because the page has already decided
+  to render the login screen.
 
 Token delivery: the access token is returned in the body **and** set as an
 `HttpOnly` cookie (`bigcrm_at`); the refresh token is **only ever** an HttpOnly
@@ -121,7 +161,7 @@ constraint refuses `mfa_enabled = true` without one.
 |---|---|---|---|
 | GET/PATCH | `/api/v1/org` | `organization.read` / `.update` | Allowlisted fields; unknown field -> 422 |
 | GET | `/api/v1/org/roles` | `organization.read` | Assignable roles + hierarchy |
-| GET | `/api/v1/org/members` | `users.read` | Tenant-scoped |
+| GET | `/api/v1/org/members` | `users.read` | Tenant-scoped. camelCase like every other endpoint (`userId`, `mfaEnabled`, `lastLoginAt`), plus per-row `canResetPassword` and `passwordResetRequested` |
 | POST | `/api/v1/org/members` | `users.create` | **In-house account creation.** Email + role in; a generated password is returned **once** and never re-readable. Ownership can never be minted here |
 | PATCH | `/api/v1/org/members/{id}/role` | `users.update` | Hierarchy enforced; self-change refused; sessions revoked |
 | DELETE | `/api/v1/org/members/{id}` | `users.remove` | Last-owner protected |

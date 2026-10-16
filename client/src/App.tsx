@@ -15,6 +15,7 @@ import { AuditLogs } from './pages/AuditLogs';
 import { SavedViews } from './pages/SavedViews';
 import { Calendar } from './pages/Calendar';
 import { DealBoard } from './pages/DealBoard';
+import { AccountTheme } from './lib/theme';
 
 /**
  * Route table. `/` is a redirect rather than a route of its own so that an
@@ -50,25 +51,31 @@ function recordRoutes(path: string, type: RecordPath): JSX.Element {
 
 export function App(): JSX.Element {
  return (
- <Routes>
- <Route path="/" element={<Navigate to="/dashboard" replace />} />
- <Route path="/login" element={<Login />} />
- <Route path="/dashboard" element={shelled(<Dashboard />)} />
- <Route path="/search" element={shelled(<GlobalSearch />)} />
- <Route path="/reports" element={shelled(<Reports />)} />
- <Route path="/notifications" element={shelled(<Notifications />)} />
- <Route path="/audit" element={shelled(<AuditLogs />)} />
- <Route path="/views" element={shelled(<SavedViews />)} />
- <Route path="/calendar" element={shelled(<Calendar />)} />
- <Route path="/deals/board" element={shelled(<DealBoard />)} />
- <Route path="/settings" element={shelled(<Settings />)} />
- {recordRoutes('/contacts', 'contacts')}
- {recordRoutes('/companies', 'companies')}
- {recordRoutes('/leads', 'leads')}
- {recordRoutes('/deals', 'deals')}
- {recordRoutes('/tasks', 'tasks')}
- <Route path="*" element={<Navigate to="/dashboard" replace />} />
- </Routes>
+ <>
+  {/* Light until there is somebody to attribute a theme to; then the
+      account's own preference. Sits above the routes so it also applies on
+      the login page, and renders nothing itself. */}
+  <AccountTheme />
+  <Routes>
+   <Route path="/" element={<Navigate to="/dashboard" replace />} />
+   <Route path="/login" element={<Login />} />
+   <Route path="/dashboard" element={shelled(<Dashboard />)} />
+   <Route path="/search" element={shelled(<GlobalSearch />)} />
+   <Route path="/reports" element={shelled(<Reports />)} />
+   <Route path="/notifications" element={shelled(<Notifications />)} />
+   <Route path="/audit" element={shelled(<AuditLogs />)} />
+   <Route path="/views" element={shelled(<SavedViews />)} />
+   <Route path="/calendar" element={shelled(<Calendar />)} />
+   <Route path="/deals/board" element={shelled(<DealBoard />)} />
+   <Route path="/settings" element={shelled(<Settings />)} />
+   {recordRoutes('/contacts', 'contacts')}
+   {recordRoutes('/companies', 'companies')}
+   {recordRoutes('/leads', 'leads')}
+   {recordRoutes('/deals', 'deals')}
+   {recordRoutes('/tasks', 'tasks')}
+   <Route path="*" element={<Navigate to="/dashboard" replace />} />
+   </Routes>
+ </>
  );
 }
 

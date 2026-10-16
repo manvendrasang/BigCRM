@@ -3,7 +3,7 @@
 ## Run
 
 ```bash
-npm test # all suites -- 838 assertions
+npm test # all suites -- 905 assertions
 npm run test:security # the 14 RULE 222 scenarios only -- 166 assertions
 npm run typecheck # tsc --noEmit, strict + noUncheckedIndexedAccess -- 0 errors
 ```
@@ -36,7 +36,8 @@ PASS integration/http-mfa.test.ts 28 assertions
 PASS integration/http-routes.test.ts 31 assertions
 PASS integration/http.test.ts 100 assertions
 PASS integration/item8.test.ts 33 assertions
-PASS integration/members.test.ts 50 assertions
+PASS integration/members.test.ts 54 assertions
+PASS integration/preferences.test.ts 26 assertions
 PASS integration/queue.test.ts 20 assertions
 PASS integration/readOnly.test.ts 7 assertions
 PASS integration/records.test.ts 94 assertions
@@ -45,7 +46,7 @@ PASS integration/retention.test.ts 20 assertions
 PASS integration/savedViews.test.ts 12 assertions
 PASS security/mfa.test.ts 71 assertions
 PASS security/scenarios.test.ts 168 assertions
-TOTAL: 874 assertions passed, 0 failed across 20 suites
+TOTAL: 905 assertions passed, 0 failed across 21 suites
 ```
 
 ## Environment
@@ -74,7 +75,8 @@ src/tests/
  integration/calendar.test.ts 53 -- agenda, meetings, invitees, invites inbox
  integration/http.test.ts 100 -- headers/CORS/CSRF/cookies/errors over a real socket
  integration/http-mfa.test.ts 28 -- MFA enrollment and login challenge over HTTP
- integration/members.test.ts 50 -- in-house account creation, role bounds, permission gate, member-initiated password reset
+ integration/members.test.ts 54 -- in-house account creation, role bounds, permission gate, member-initiated password reset
+ integration/preferences.test.ts 26 -- per-account theme: default light, no cross-account leakage, DB CHECK, CSRF
  integration/records.test.ts 94 -- records, tenant isolation, transactional conversion, viewer task scope
  integration/retention.test.ts 20 -- batched purge; audit rows never deleted
  security/scenarios.test.ts 168 -- 14 RULE 222 scenarios + supporting controls

@@ -142,7 +142,7 @@ S(2, 'IDOR -- user A requests Org B resources');
  T('S2', `${label}: cross-org row unreachable`, crossTenant);
  }
  const members = await listMembers(A.actor);
- T('S2', 'member list scoped to caller org', members.every((m) => m.user_id !== fixturesB.contactId));
+ T('S2', 'member list scoped to caller org', members.every((m) => m.userId !== fixturesB.contactId));
  // A real id from org B must not be usable by org A to remove a member.
  const err = await denied(async () => removeMember(A.actor, fixturesB.contactId));
  T('S2', 'removeMember rejects a user id from another org', err !== undefined);
@@ -156,7 +156,7 @@ S(3, 'Role Escalation -- manager/admin attempts role=owner');
  T('S3', 'viewer cannot assign anything', ROLE_RANK.viewer < ROLE_RANK.viewer ? false : !canAssignRole('viewer', null, 'sales'));
  const err = await denied(() => changeMemberRole(A.actor, viewer.userId, 'owner'));
  T('S3', 'live owner cannot promote a viewer to owner', err !== undefined, err);
- const stillViewer = (await listMembers(A.actor)).find((m) => m.user_id === viewer.userId);
+ const stillViewer = (await listMembers(A.actor)).find((m) => m.userId === viewer.userId);
  T('S3', 'role unchanged after the blocked attempt', stillViewer?.role === 'viewer');
  // Self-escalation is refused even for the owner.
  const selfErr = await denied(() => changeMemberRole(A.actor, A.userId, 'admin'));

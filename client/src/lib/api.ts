@@ -330,6 +330,40 @@ function csrfHeaders(method: string): Record<string, string> {
 }
 
 /** Converts a non-2xx response into a narrow, safe `ApiError`. */
+/**
+ * Field-level validation reasons from a `details` object.
+ *
+ * A 422 carries the useful part in `details` (`{ password: 'too short' }`) while
+ * `message` is the fixed string "Request validation failed." Lifting only
+ * `message` therefore told the user nothing: the admin-reset card rejected a
+ * password and displayed "Request validation failed." with no reason, which is
+ * indistinguishable from a server fault.
+ *
+ * Only string values are taken, in key order, and only when the body actually
+ * has the documented shape -- an unexpected `details` must not be rendered.
+ * The field name is prefixed only when more than one field failed, since a
+ * single reason ("Password must be at least 12 characters.") reads better alone.
+ */
+function validationReasons(body: Record<string, unknown>): string[] {
+ const details = body['details'];
+ if (typeof details !== 'object' || details === null || Array.isArray(details)) return [];
+ const entries: { field: string; reason: string }[] = [];
+ for (const [field, value] of Object.entries(details as Record<string, unknown>)) {
+  const texts = Array.isArray(value)
+   ? value.filter((v): v is string => typeof v === 'string')
+   : typeof value === 'string'
+    ? [value]
+    : [];
+  for (const reason of texts) {
+   const trimmed = reason.trim();
+   if (trimmed.length > 0) entries.push({ field, reason: trimmed });
+  }
+ }
+ if (entries.length === 0) return [];
+ const many = new Set(entries.map((e) => e.field)).size > 1;
+ return entries.map((e) => (many ? `${e.field}: ${e.reason}` : e.reason));
+}
+
 async function toApiError(response: Response): Promise<ApiError> {
  const { status } = response;
 
@@ -354,12 +388,16 @@ async function toApiError(response: Response): Promise<ApiError> {
  if (typeof record['message'] === 'string' && record['message'].length > 0) {
  message = record['message'].slice(0, 300);
  }
+ if (code === 'VALIDATION_FAILED') {
+ const reasons = validationReasons(record);
+ if (reasons.length > 0) message = reasons.join(' ');
+ }
  }
  } catch {
  // Non-JSON body (HTML error page, empty body). The generic message stands.
  }
 
- return new ApiError(status, code, scrubSecrets(message));
+ return new ApiError(status, code, scrubSecrets(message).slice(0, 300));
 }
 
 /** Unwraps the `{ data, requestId }` envelope the API documents. */
@@ -460,6 +498,8 @@ export const api = {
  request<T>(path, { ...options, method: 'POST', body }),
  patch: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> =>
  request<T>(path, { ...options, method: 'PATCH', body }),
+ put: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> =>
+  request<T>(path, { ...options, method: 'PUT', body }),
  del: <T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> =>
  request<T>(path, { ...options, method: 'DELETE' }),
 };

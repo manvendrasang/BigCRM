@@ -396,6 +396,55 @@ describe('api client', () => {
  expect(error.message).not.toContain('<html>');
  });
 
+ it('surfaces the field-level reason behind a 422 instead of the generic string', async () => {
+ // `message` on a validation error is always "Request validation failed.";
+ // the actionable text lives in `details`. Lifting only `message` is why the
+ // password-reset card reported a policy rejection as an opaque failure.
+ stubFetch(async () =>
+ jsonResponse({
+ code: 'VALIDATION_FAILED',
+ message: 'Request validation failed.',
+ details: { password: "Password must not contain the member's email address." },
+ }, 422),
+ );
+
+ const error = (await api.post('/org/members/u1/password', {}).catch((e: unknown) => e)) as ApiError;
+
+ expect(error.status).toBe(422);
+ expect(error.code).toBe('VALIDATION_FAILED');
+ expect(error.message).toBe("Password must not contain the member's email address.");
+ expect(error.message).not.toContain('Request validation failed');
+ });
+
+ it('prefixes the field name only when more than one field failed', async () => {
+ stubFetch(async () =>
+ jsonResponse({
+ code: 'VALIDATION_FAILED',
+ message: 'Request validation failed.',
+ details: { email: 'Enter a valid email address.', role: 'Choose a valid role.' },
+ }, 422),
+ );
+
+ const error = (await api.post('/org/members', {}).catch((e: unknown) => e)) as ApiError;
+
+ expect(error.message).toContain('email: Enter a valid email address.');
+ expect(error.message).toContain('role: Choose a valid role.');
+ });
+
+ it('keeps the generic message when a 422 carries no usable detail', async () => {
+ stubFetch(async () =>
+ jsonResponse({
+ code: 'VALIDATION_FAILED',
+ message: 'Request validation failed.',
+ details: { weird: { nested: true }, empty: '   ' },
+ }, 422),
+ );
+
+ const error = (await api.post('/org/members', {}).catch((e: unknown) => e)) as ApiError;
+
+ expect(error.message).toBe('Request validation failed.');
+ });
+
  it('reports a network failure without leaking the underlying error', async () => {
  stubFetch(async () => {
  throw new Error('connect ECONNREFUSED 127.0.0.1:3000');

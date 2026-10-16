@@ -83,29 +83,59 @@ export async function updateOrganization(
 }
 
 //  members 
-export type MemberRow = {
+/** One row of `organization_members` as SQL returns it, snake_case. */
+type MemberRowWire = {
  user_id: string; email: string; name: string; role: Role; status: string;
  joined_at: string | null; created_at: string; mfa_enabled: boolean; email_verified_at: string | null;
  last_login_at: string | null; locked_until: string | null;
 };
 
 /**
- * A roster row plus the two derived facts the Members UI needs and must not
- * compute for itself:
+ * The roster as the API returns it: camelCase, like every other endpoint.
  *
  * * `canResetPassword` -- whether THIS actor may set this member's password.
  *   The server decides (rank + owner ceiling); the client only renders.
  * * `passwordResetRequested` -- whether the member has an open request, so the
  *   row can be badged.
+ *
+ * This used to be the raw row (`user_id`, `mfa_enabled`, `last_login_at`) while
+ * the client expected camelCase. Nothing failed loudly: `email`, `name`, `role`
+ * and `status` are spelled identically in both conventions, so the roster
+ * rendered plausibly while `userId` was `undefined` -- which made the password
+ * reset post to `/org/members/undefined/password`, and made every MFA cell read
+ * "Off" and every last-login cell read "Never". `rowToView`/`rowToActivity`/
+ * `rowToAttachment` already mapped for their tables; this one did not.
  */
-export type MemberListRow = MemberRow & {
+export type MemberListRow = {
+ userId: string; email: string; name: string; role: Role; status: string;
+ joinedAt: string | null; createdAt: string; mfaEnabled: boolean;
+ emailVerifiedAt: string | null; lastLoginAt: string | null; lockedUntil: string | null;
  canResetPassword: boolean;
  passwordResetRequested: boolean;
 };
 
+const rowToMember = (
+ row: MemberRowWire & { reset_requested_at: string | null },
+ actorRole: Role,
+): MemberListRow => ({
+ userId: String(row.user_id),
+ email: String(row.email),
+ name: String(row.name),
+ role: row.role,
+ status: String(row.status),
+ joinedAt: row.joined_at === null ? null : String(row.joined_at),
+ createdAt: String(row.created_at),
+ mfaEnabled: row.mfa_enabled === true,
+ emailVerifiedAt: row.email_verified_at === null ? null : String(row.email_verified_at),
+ lastLoginAt: row.last_login_at === null ? null : String(row.last_login_at),
+ lockedUntil: row.locked_until === null ? null : String(row.locked_until),
+ canResetPassword: canResetPassword(actorRole, row.role),
+ passwordResetRequested: row.reset_requested_at !== null,
+});
+
 export async function listMembers(actor: ActorRef): Promise<MemberListRow[]> {
  const db = await initDriver();
- const r = await db.query<MemberRow & { reset_requested_at: string | null }>(
+ const r = await db.query<MemberRowWire & { reset_requested_at: string | null }>(
  `SELECT m.user_id, u.email, u.name, m.role, m.status, m.joined_at, m.created_at,
  u.mfa_enabled, u.email_verified_at, u.last_login_at, u.locked_until,
  (SELECT pr.requested_at FROM password_reset_requests pr
@@ -117,14 +147,7 @@ export async function listMembers(actor: ActorRef): Promise<MemberListRow[]> {
  ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'manager' THEN 2
  WHEN 'sales' THEN 3 ELSE 4 END, m.created_at`,
  [actor.organizationId]);
- return r.rows.map((row) => {
- const { reset_requested_at, ...rest } = row;
- return {
-  ...rest,
-  canResetPassword: canResetPassword(actor.role, row.role),
-  passwordResetRequested: reset_requested_at !== null,
- };
- });
+ return r.rows.map((row) => rowToMember(row, actor.role));
 }
 
 /**
@@ -400,8 +423,22 @@ export async function resetMemberPassword(
  const targetUser = target.rows[0];
  if (!targetUser) throw notFound('Account not found.');
 
+ // The policy reasons are written in the first person ("your email address"),
+ // which is right when you are changing your own password and wrong here: the
+ // actor is an owner or admin and the subject is somebody else. The three
+ // personal-data reasons are reworded to name whose data is being checked, so a
+ // rejected attempt says which rule to break instead of sounding like a bug.
+ const SUBJECT_REWORD: Record<string, string> = {
+ contains_email: "Password must not contain the member's email address.",
+ contains_domain: "Password must not contain the member's email domain.",
+ contains_name: "Password must not contain the member's name.",
+ };
  const issues = checkPasswordStrength(newPassword, { email: targetUser.email, name: targetUser.name });
- if (issues.length) throw validationFailed({ password: issues.map((i) => i.message).join(' ') });
+ if (issues.length) {
+ throw validationFailed({
+ password: issues.map((i) => SUBJECT_REWORD[i.code] ?? i.message).join(' '),
+ });
+ }
 
  const { verifyPassword } = await import('../lib/password.ts');
  if (await verifyPassword(newPassword, targetUser.password_hash)) {

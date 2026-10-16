@@ -117,7 +117,10 @@ describe('Settings members section', () => {
  it('renders the roster the server returns', async () => {
   stubMembers({
    members: [
-    { userId: 'u1', email: 'ava@corp.io', name: 'Ava', role: 'admin', status: 'active', mfaEnabled: true, lastLoginAt: null },
+    {
+    user_id: 'u1', email: 'ava@corp.io', name: 'Ava', role: 'admin', status: 'active',
+    mfa_enabled: true, last_login_at: null, canResetPassword: true, passwordResetRequested: false,
+   },
    ],
   });
 
@@ -203,8 +206,8 @@ describe('Settings members section', () => {
 
 describe('Settings password reset', () => {
  const resettable = {
-  userId: 'u1', email: 'sam@corp.io', name: 'Sam', role: 'sales', status: 'active',
-  mfaEnabled: false, lastLoginAt: null, canResetPassword: true, passwordResetRequested: true,
+  user_id: 'u1', email: 'sam@corp.io', name: 'Sam', role: 'sales', status: 'active',
+  mfa_enabled: false, last_login_at: null, canResetPassword: true, passwordResetRequested: true,
  };
 
  it('offers Reset password only for members the server says this actor may reset', async () => {
@@ -212,8 +215,8 @@ describe('Settings password reset', () => {
    members: [
     { ...resettable },
     {
-     userId: 'u2', email: 'root@corp.io', name: 'Root', role: 'owner', status: 'active',
-     mfaEnabled: true, lastLoginAt: null, canResetPassword: false, passwordResetRequested: false,
+     user_id: 'u2', email: 'root@corp.io', name: 'Root', role: 'owner', status: 'active',
+     mfa_enabled: true, last_login_at: null, canResetPassword: false, passwordResetRequested: false,
     },
    ],
   });

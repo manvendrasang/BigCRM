@@ -269,9 +269,55 @@ export interface CreatedMember {
  generatedPassword: string;
 }
 
+/**
+ * Both shapes the roster has been observed in.
+ *
+ * `GET /org/members` now returns camelCase like every other endpoint (`rowToMember`
+ * on the server), but it used to return the raw SQL row. Reading a single
+ * fixed shape is how the mismatch stayed invisible: `body as MemberRow[]`
+ * silenced TypeScript while `userId` was `undefined`, so the password reset
+ * posted to `/org/members/undefined/password` and every MFA cell rendered
+ * "Off". Accepting both means a regression in either direction degrades to a
+ * blank cell instead of a 400 or a wrong id.
+ */
+interface MemberRowWire {
+ userId?: string;
+ user_id?: string;
+ email?: string;
+ name?: string;
+ role?: string;
+ status?: string;
+ mfaEnabled?: boolean;
+ mfa_enabled?: boolean;
+ lastLoginAt?: string | null;
+ last_login_at?: string | null;
+ canResetPassword?: boolean;
+ passwordResetRequested?: boolean;
+}
+
+/**
+ * Normalises a roster row to the camelCase the UI uses.
+ *
+ * `userId` is both the React key and the target id in `resetMemberPassword`,
+ * so it is the one field that must never be silently missing.
+ */
+function toMemberRow(row: MemberRowWire): MemberRow {
+ return {
+  userId: String(row.userId ?? row.user_id ?? ''),
+  email: String(row.email ?? ''),
+  name: String(row.name ?? ''),
+  role: String(row.role ?? ''),
+  status: String(row.status ?? ''),
+  mfaEnabled: (row.mfaEnabled ?? row.mfa_enabled) === true,
+  lastLoginAt: row.lastLoginAt ?? row.last_login_at ?? null,
+  canResetPassword: row.canResetPassword === true,
+  passwordResetRequested: row.passwordResetRequested === true,
+ };
+}
+
 export async function listMembers(): Promise<MemberRow[]> {
  const body = await api.get<unknown>('/org/members');
- return Array.isArray(body) ? (body as MemberRow[]) : [];
+ return Array.isArray(body) ? body.map((r) => toMemberRow(r as MemberRowWire)) : [];
 }
 
 export interface RoleOptions {

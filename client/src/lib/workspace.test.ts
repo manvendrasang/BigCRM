@@ -355,13 +355,54 @@ describe('deleteView', () => {
 describe('members', () => {
  it('lists the roster as the bare array the endpoint sends', async () => {
   setFetchImplementation(async () =>
-  jsonResponse([{ userId: 'u1', email: 'ava@corp.io', name: 'Ava', role: 'sales', status: 'active', mfaEnabled: false, lastLoginAt: null }]),
+  jsonResponse([{
+   user_id: 'u1', email: 'ava@corp.io', name: 'Ava', role: 'sales', status: 'active',
+   joined_at: '2026-01-01T00:00:00Z', created_at: '2026-01-01T00:00:00Z',
+   mfa_enabled: true, email_verified_at: '2026-01-01T00:00:00Z',
+   last_login_at: '2026-02-02T10:00:00Z', locked_until: null,
+   canResetPassword: true, passwordResetRequested: true,
+  }]),
   );
 
   const rows = await listMembers();
 
   expect(rows).toHaveLength(1);
   expect(rows[0]!.role).toBe('sales');
+ });
+
+ it('renames the snake_case columns the server actually sends', async () => {
+  // The endpoint SELECTs from `organization_members` JOIN `users`, so the
+  // multi-word columns arrive snake_case. Getting this wrong made
+  // `resetMemberPassword` post to `/org/members/undefined/password` and
+  // rendered every MFA cell as "Off" -- while the single-word columns still
+  // looked right, so the bug hid behind a plausible roster.
+  setFetchImplementation(async () =>
+  jsonResponse([{
+   user_id: 'u1', email: 'ava@corp.io', name: 'Ava', role: 'sales', status: 'active',
+   mfa_enabled: true, last_login_at: '2026-02-02T10:00:00Z',
+   canResetPassword: true, passwordResetRequested: true,
+  }]),
+  );
+
+  const [row] = await listMembers();
+
+  expect(row!.userId).toBe('u1');
+  expect(row!.mfaEnabled).toBe(true);
+  expect(row!.lastLoginAt).toBe('2026-02-02T10:00:00Z');
+  expect(row!.canResetPassword).toBe(true);
+  expect(row!.passwordResetRequested).toBe(true);
+ });
+
+ it('defaults absent booleans to false rather than leaving them undefined', async () => {
+  setFetchImplementation(async () => jsonResponse([{ user_id: 'u2', email: 'bo@corp.io' }]));
+
+  const [row] = await listMembers();
+
+  expect(row!.userId).toBe('u2');
+  expect(row!.mfaEnabled).toBe(false);
+  expect(row!.canResetPassword).toBe(false);
+  expect(row!.passwordResetRequested).toBe(false);
+  expect(row!.lastLoginAt).toBeNull();
  });
 
  it('degrades to an empty roster on an unexpected shape', async () => {

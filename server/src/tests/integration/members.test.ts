@@ -81,6 +81,16 @@ console.log('\n=== service: create and list ===');
  T('the roster says who this actor may reset',
  list.every((m) => typeof m.canResetPassword === 'boolean'), list[0] && { role: list[0].role, canResetPassword: list[0].canResetPassword });
  T('the owner may reset everyone', list.every((m) => m.canResetPassword));
+ // The wire shape is pinned here because getting it wrong was silent: this
+ // endpoint used to return the raw SQL row (user_id, mfa_enabled) while the
+ // client read camelCase, so the reset POSTed to /members/undefined/password.
+ // `email`/`name`/`role`/`status` are identical in both conventions, which is
+ // exactly why a plausible-looking roster hid it.
+ T('the roster is camelCase like every other endpoint',
+ Object.keys(list[0] ?? {}).every((k) => !k.includes('_'))
+ && list.every((m) => typeof m.userId === 'string' && m.userId.length > 0
+  && typeof m.mfaEnabled === 'boolean' && 'lastLoginAt' in m),
+ Object.keys(list[0] ?? {}));
 }
 
 console.log('\n=== the generated password works end to end ===');
@@ -122,7 +132,7 @@ console.log('\n=== password reset: a member requests, the office completes ===')
  const newHire = roster.find((m) => m.email === 'new-hire@corp.io');
  if (!newHire) throw new Error('fixture missing: new-hire');
  const salesActorRef: ActorRef = {
-  userId: newHire.user_id, organizationId: owner.organizationId, role: 'sales', email: newHire.email,
+  userId: newHire.userId, organizationId: owner.organizationId, role: 'sales', email: newHire.email,
  };
 
  const req = await requestPasswordReset(salesActorRef);
@@ -133,21 +143,21 @@ console.log('\n=== password reset: a member requests, the office completes ===')
  T('a repeated request is idempotent', again.requestId === req.requestId && again.notified === 0, again);
 
  const adminRoster = await listMembers(admin);
- const pending = adminRoster.find((m) => m.user_id === newHire.user_id);
+ const pending = adminRoster.find((m) => m.userId === newHire.userId);
  T('the roster flags the pending request', pending?.passwordResetRequested === true);
  T('the admin is told they may reset a sales member', pending?.canResetPassword === true);
  T('the admin is NOT offered a reset for the owner',
   adminRoster.find((m) => m.role === 'owner')?.canResetPassword === false);
 
  let weak = false;
- try { await resetMemberPassword(owner, newHire.user_id, 'password'); } catch { weak = true; }
+ try { await resetMemberPassword(owner, newHire.userId, 'password'); } catch { weak = true; }
  T('a weak password is refused', weak);
 
  let adminOnOwner = false;
  try { await resetMemberPassword(admin, owner.userId, 'Qq-8830-Marble-vt'); } catch { adminOnOwner = true; }
  T('an admin cannot reset an owner', adminOnOwner);
 
- const done = await resetMemberPassword(owner, newHire.user_id, 'Zz-5521-Lantern-kq');
+ const done = await resetMemberPassword(owner, newHire.userId, 'Zz-5521-Lantern-kq');
  T('the owner resets the member and their sessions are revoked',
   typeof done.sessionsRevoked === 'number', done.sessionsRevoked);
 
@@ -158,7 +168,7 @@ console.log('\n=== password reset: a member requests, the office completes ===')
  T('the new password works', relog.kind === 'ok', relog.kind);
  newHirePassword = 'Zz-5521-Lantern-kq';
 
- const cleared = (await listMembers(admin)).find((m) => m.user_id === newHire.user_id);
+ const cleared = (await listMembers(admin)).find((m) => m.userId === newHire.userId);
  T('the pending request clears after the reset', cleared?.passwordResetRequested === false);
 
  let ownerReq = false;
@@ -309,6 +319,24 @@ console.log('\n=== HTTP: password reset endpoints ===');
  });
  await unknown.arrayBuffer();
  T('an unknown member -> 404', unknown.status === 404, unknown.status);
+
+ // A 422 that says only "Request validation failed." leaves the admin with no
+ // way to tell a policy rejection from a server fault, so the reason has to
+ // survive to the client -- and it must name the MEMBER whose email/name was
+ // checked, not say "your" to an actor resetting somebody else's password.
+ const rejected = await call(`/api/v1/org/members/${targetId}/password`, {
+  method: 'POST', headers: { authorization: `Bearer ${ownerToken}` },
+  body: JSON.stringify({ password: 'resettable-9Q!x' }),
+ });
+ const rejectedBody = await rejected.json() as { details?: Record<string, unknown> };
+ T('a password containing the member\'s email is refused -> 422', rejected.status === 422, rejected.status);
+ T('the 422 explains which rule was broken',
+ typeof rejectedBody.details?.['password'] === 'string'
+ && !String(rejectedBody.details?.['password']).includes('Request validation failed'),
+ rejectedBody.details);
+ T('and it names the member, not the acting admin',
+ /member/i.test(String(rejectedBody.details?.['password'] ?? '')),
+ rejectedBody.details?.['password']);
 }
 
 server.close();

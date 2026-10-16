@@ -28,6 +28,9 @@ import {
  authenticate, authIpLimiter, authAccountLimiter, csrfGuard, sensitiveActionWindow,
 } from '../../middleware/security.ts';
 import { validationFailed, invalidCredentials } from '../../lib/errors.ts';
+import {
+ getThemePreference, setThemePreference, THEME_PREFERENCES,
+} from '../../services/userPreferences.ts';
 import { logger, securityLog } from '../../lib/logger.ts';
 import { setSessionCookies, clearSessionCookies, setMfaChallengeCookie } from './cookies.ts';
 
@@ -222,6 +225,34 @@ authRouter.get('/me', authenticate, asyncRoute(async (req, res) => {
 authRouter.get('/sessions', authenticate, asyncRoute(async (req, res) => {
  const actor = req.actor!;
  res.json({ data: await listSessions(actor.userId, actor.sessionId) });
+}));
+
+//  appearance preference (cosmetic, per account) 
+
+/**
+ * `GET`/`PUT /auth/me/preferences` -- the caller's own theme.
+ *
+ * A separate endpoint rather than a field on `/auth/me` because it is the only
+ * preference that exists, it changes rarely, and it must stay readable by a
+ * viewer who can do almost nothing else. It is also the only preference that
+ * has to survive logout-on-window-close, which is why it is stored per account
+ * rather than in browser storage (see services/userPreferences.ts).
+ *
+ * The write is CSRF-guarded because it is a state change, even though the state
+ * it changes is cosmetic: an unauthenticated cross-site POST must not be able to
+ * alter anything, and one unguarded write endpoint is how that rule gets
+ * quietly relaxed.
+ */
+authRouter.get('/me/preferences', authenticate, asyncRoute(async (req, res) => {
+ res.json({ data: { theme: await getThemePreference(req.actor!) } });
+}));
+
+const themeSchema = z.object({ theme: z.enum(THEME_PREFERENCES) });
+
+authRouter.put('/me/preferences', csrfGuard, authenticate, asyncRoute(async (req, res) => {
+ const parsed = themeSchema.safeParse(req.body);
+ if (!parsed.success) throw validationFailed(fieldErrors(parsed.error));
+ res.json({ data: await setThemePreference(req.actor!, parsed.data.theme) });
 }));
 
 authRouter.delete('/sessions/:id', csrfGuard, authenticate, asyncRoute(async (req, res) => {
