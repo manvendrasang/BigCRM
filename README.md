@@ -1,3 +1,6 @@
+THIS REPO IS NOW FREEZED
+
+
 # BigCRM
 
 A multi-tenant CRM for offices that create their own employee accounts rather
