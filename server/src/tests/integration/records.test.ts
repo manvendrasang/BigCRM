@@ -187,6 +187,24 @@ const deal = await createRecord(acme, 'deals', {
 });
 T('deal created', Boolean(deal.record.id));
 
+// Creating a deal without pipeline / stage falls back to the tenant's default
+// pipeline and its first stage instead of 400ing.
+const defaulted = await createRecord(acme, 'deals', { name: 'No pipeline specified' });
+T('deal created without pipeline/stage still succeeds', Boolean(defaulted.record.id));
+T('defaulted deal uses the default pipeline', defaulted.record.pipeline_id === String(pipeline.id));
+T('defaulted deal uses the first stage', defaulted.record.stage_id === String(stages[0]!.id));
+
+// A tenant with no pipeline at all should still be able to create a deal:
+// createRecord auto-creates the default pipeline + stages (registration never
+// seeds a pipeline).
+const bare = await createRecord(globex, 'deals', { name: 'First project, no pipeline yet' });
+T('deal created in a tenant with no pipeline', Boolean(bare.record.id));
+const barePipelines = await listRecords(globex, 'pipelines');
+T('auto-created a default pipeline', barePipelines.total >= 1, barePipelines.total);
+const bareDeal = await getRecord(globex, 'deals', String(bare.record.id));
+T('auto-created deal lands on a pipeline', typeof bareDeal.pipeline_id === 'string' && bareDeal.pipeline_id.length > 0);
+T('auto-created deal lands on a stage', typeof bareDeal.stage_id === 'string' && bareDeal.stage_id.length > 0);
+
 const wrongPipeline = await createPipelineWithStages(acme, { name: 'SMB' });
 const wrongStages = await listPipelineStages(acme, String(wrongPipeline.id));
 const crossStage = await attempt(() => moveDealStage(acme, String(deal.record.id), String(wrongStages[0]!.id)));

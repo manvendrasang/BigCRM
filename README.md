@@ -91,20 +91,6 @@ authority -- the client asks the server what it may do rather than deciding.
 | Security posture, retention, KMS | read | no | no | read | yes |
 | Delete organization, transfer ownership | no | no | no | no | yes |
 
-Notable consequences, all enforced server-side:
-
-- **A viewer cannot create anything**, cannot see earnings, custom fields, saved
-  views or the audit log, and can only answer tasks assigned to them.
-- **A viewer reads all projects**, not only their own.
-- **An admin cannot reset an owner's password.** An owner can reset anyone's,
-  including another owner's.
-- **An admin cannot mint a peer admin or an owner**, cannot change the owner's
-  role, and cannot transfer ownership.
-- **The last owner cannot be demoted or removed.**
-- **`owner` is unreachable** by invitation or role change. Only by transfer.
-
----
-
 ## File map
 
 ### Root
@@ -193,45 +179,6 @@ npm run dev:web       # client on :5173
 | `npm run test:coverage --workspace=@bigcrm/server` | c8 with enforced thresholds |
 | `npm test --workspace=@bigcrm/client` | Client suite |
 | `npm run build` | API to `server/dist/`, client to `client/dist/` |
-
-Requires Node 22 or newer.
-
-### Verification status
-
-| Check | Result |
-|---|---|
-| Typecheck (both workspaces) | 0 errors |
-| Lint | 0 errors |
-| Server suite | 905 assertions, 21 suites, 0 failures |
-| Security scenarios | 168 assertions, 0 failures |
-| Client suite | 170 tests, 15 files, 0 failures |
-
----
-
-## Design notes
-
-**Configuration fails closed.** The API refuses to start rather than running
-with a weak or missing secret. A startup failure is the intended outcome.
-
-**Authorization is server-side.** Hiding a button grants nothing. Every route
-checks a permission, and the record service narrows reads by tenant and by role
-in addition.
-
-**Tenant isolation is structural.** Every query goes through a tenant scope. The
-organization is resolved from the session, never from the request, so a client
-cannot name the tenant it wants.
-
-**Only one string-interpolated SQL exists**, and it passes through an identifier
-allowlist.
-
-**Tokens.** The access token lives in memory only -- never `localStorage`, never
-a readable cookie. The refresh token is `HttpOnly` and never appears in a
-response body.
-
-**Cross-site writes are blocked twice**: an `Origin`/`Referer` check plus a
-double-submit CSRF token.
-
----
 
 ## License
 

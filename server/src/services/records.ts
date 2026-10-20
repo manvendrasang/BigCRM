@@ -350,9 +350,9 @@ function prepare(type: RecordType, input: Row, partial = false): Prepared {
  const name = req(input.name, 200, 'name');
  const pipelineId = uuid(input.pipeline_id, 'pipeline_id');
  const stageId = uuid(input.stage_id, 'stage_id');
- if (!pipelineId) throw badRequest("'pipeline_id' is required.");
- if (!stageId) throw badRequest("'stage_id' is required.");
- const out: Prepared = { name, pipeline_id: pipelineId, stage_id: stageId };
+ const out: Prepared = { name };
+ if (pipelineId) out.pipeline_id = pipelineId;
+ if (stageId) out.stage_id = stageId;
  const value = intOrNull(input.value_c, 'value_c', 0, Number.MAX_SAFE_INTEGER);
  if (value !== null) out.value_c = value;
  const currency = str(input.currency, 3);
@@ -716,6 +716,69 @@ export async function createRecord(
 ): Promise<WriteResult> {
  const scope = new TenantScope(actor.organizationId);
  const prepared = prepare(type, input);
+
+ // The UI create form doesn't ask for pipeline / stage, so fall back to the
+ // org's default pipeline with stages. Prefer a pipeline that already has
+ // stages; otherwise create the default pipeline with stages.
+ if (type === 'deals') {
+ if (prepared.pipeline_id === undefined) {
+ let pipeline = await scope.queryOne(
+ `SELECT p.* FROM pipelines p
+ WHERE p.organization_id = $1 AND p.deleted_at IS NULL
+   AND EXISTS (
+     SELECT 1 FROM pipeline_stages s
+     WHERE s.organization_id = p.organization_id
+       AND s.pipeline_id = p.id AND s.deleted_at IS NULL
+   )
+ ORDER BY p.is_default DESC, p.created_at ASC LIMIT 1`,
+ [actor.organizationId],
+ );
+ if (!pipeline) {
+ // No pipeline with stages. Try any existing pipeline (it may lack stages),
+ // and create the default pipeline only when none exists at all.
+ pipeline = await scope.queryOne(
+ 'SELECT * FROM pipelines WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY is_default DESC, created_at ASC LIMIT 1',
+ [actor.organizationId],
+ );
+ if (pipeline) {
+ // Ensure the existing pipeline has stages.
+ const hasStages = await scope.query(
+ 'SELECT 1 FROM pipeline_stages WHERE organization_id = $1 AND pipeline_id = $2 AND deleted_at IS NULL LIMIT 1',
+ [actor.organizationId, String(pipeline.id)],
+ );
+ if (hasStages.length === 0) {
+ const stageNames = ['New', 'Qualification', 'Proposal', 'Negotiation', 'Won'];
+ const probabilityFor = (i: number, n: number) => Math.round((i / Math.max(n - 1, 1)) * 100);
+ for (const [i, name] of stageNames.entries()) {
+ await createRecord(actor, 'pipeline_stages', {
+ pipeline_id: String(pipeline.id),
+ name,
+ position: i,
+ probability: probabilityFor(i, stageNames.length),
+ is_won: i === stageNames.length - 1,
+ is_lost: false,
+ }, meta);
+ }
+ }
+ } else {
+ pipeline = await createPipelineWithStages(actor, { name: 'Sales Pipeline', isDefault: true }, {});
+ }
+ }
+ prepared.pipeline_id = String(pipeline.id);
+ }
+ if (prepared.stage_id === undefined) {
+ const stage = await scope.queryOne(
+ `SELECT * FROM pipeline_stages WHERE organization_id = $1 AND pipeline_id = $2 AND deleted_at IS NULL
+ ORDER BY position ASC LIMIT 1`,
+ [actor.organizationId, String(prepared.pipeline_id)],
+ );
+ if (!stage) {
+ throw badRequest('The pipeline has no stages; add one before adding a project.');
+ }
+ prepared.stage_id = String(stage.id);
+ }
+ }
+
  const full = withServerFields(type, prepared, actor);
 
  const tagName = full.name ?? full.title ?? full.last_name ?? null;
