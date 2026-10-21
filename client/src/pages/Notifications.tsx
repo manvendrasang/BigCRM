@@ -58,7 +58,7 @@ export function Notifications(): JSX.Element {
  }
 
  return (
- <div>
+ <div className="enter">
  <h1>Notifications</h1>
  <p className="muted">
  {unread === 0 ? 'No unread notifications.' : `${unread} unread.`}

@@ -31,6 +31,7 @@ import { ActivityTimeline } from '../../components/ActivityTimeline';
 import { RelatedDeals, RelatedTasks } from '../../components/RelatedRecords';
 import { ScheduleMeetingForm } from '../../components/ScheduleMeetingForm';
 import { useConfirm } from '../../components/ui';
+import { Skeleton } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 
 export function displayValue(type: RecordType, record: unknown, key: string): string {
@@ -161,10 +162,19 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  }
  }
 
- if (isLoading) return <p className="muted" role="status">Loading...</p>;
+ if (isLoading) return (
+<div className="grid stagger">
+<div className="card section enter-fast">
+<Skeleton variant="title" />
+<Skeleton variant="line" />
+<Skeleton variant="line" />
+<Skeleton variant="line" />
+</div>
+</div>
+);
  if (error || !record) {
  return (
- <div>
+ <div className="enter">
  <p>
  <Link to="..">&larr; Back to {config.plural}</Link>
  </p>
@@ -178,7 +188,7 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  const title = firstTitle(type, record, config.singular);
 
  return (
- <div>
+ <div className="enter">
  <p>
  <Link to="..">&larr; Back to {config.plural}</Link>
  </p>

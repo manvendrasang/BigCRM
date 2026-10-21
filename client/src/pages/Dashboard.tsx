@@ -88,13 +88,13 @@ export function Dashboard(): JSX.Element {
  }, []);
 
  return (
- <div>
+ <div className="enter">
  <h1>Dashboard</h1>
  <p className="muted">
  Signed in as <strong>{user?.name || user?.email}</strong>.
  </p>
 
- <div className="grid">
+ <div className="grid stagger">
  <KpiCard title="Organization" value={actor?.organizationId ? 'Active' : '--'} note="Tenant-scoped workspace" />
  <KpiCard title="Your role" value={roleLabel} note="Determines what you can read and change" />
  <KpiCard
@@ -107,7 +107,7 @@ export function Dashboard(): JSX.Element {
  {overview && (
  <>
  <h2>Workspace</h2>
- <div className="grid">
+ <div className="grid stagger">
  <KpiLinkCard title="Contacts" value={overview.contacts.toLocaleString()} note="View all ->" to="/contacts" />
  <KpiLinkCard title="Companies" value={overview.companies.toLocaleString()} note="View all ->" to="/companies" />
  <KpiLinkCard title="Leads" value={overview.leads.toLocaleString()} note="View all ->" to="/leads" />

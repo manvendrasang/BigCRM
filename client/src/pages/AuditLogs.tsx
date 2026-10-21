@@ -46,7 +46,7 @@ export function AuditLogs(): JSX.Element {
  const pageCount = Math.max(1, Math.ceil(total / PAGE));
 
  return (
- <div>
+ <div className="enter">
  <h1>Audit log</h1>
  <p className="muted">
  {total === 1 ? '1 entry' : `${total.toLocaleString()} entries`}. Append-only; entries cannot be edited or deleted.
@@ -64,8 +64,7 @@ export function AuditLogs(): JSX.Element {
  className="form-row"
  >
  <input
- className="search"
- style={{ flex: '1 1 200px' }}
+ className="search audit-filter"
  placeholder="Action (e.g. contacts.create)"
  value={action}
  onChange={(e) => setAction(e.target.value)}

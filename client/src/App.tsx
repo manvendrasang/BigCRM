@@ -28,7 +28,9 @@ import { AccountTheme } from './lib/theme';
 function shelled(element: JSX.Element): JSX.Element {
  return (
  <ProtectedRoute>
- <AuthenticatedShell>{element}</AuthenticatedShell>
+ <AuthenticatedShell>
+ <div className="route-page enter">{element}</div>
+ </AuthenticatedShell>
  </ProtectedRoute>
  );
 }

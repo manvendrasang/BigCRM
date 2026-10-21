@@ -66,7 +66,7 @@ export function SavedViews(): JSX.Element {
  }
 
  return (
- <div>
+ <div className="enter">
  <h1>Saved views</h1>
  <p className="muted">Named filter and sort presets for record lists.</p>
 

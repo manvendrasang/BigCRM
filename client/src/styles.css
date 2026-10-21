@@ -695,6 +695,21 @@ table.records td a {
   flex-wrap: wrap;
 }
 
+/* Small status pill used in tables and lists. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  vertical-align: baseline;
+}
+
 /* Inline filter/search forms inside a toolbar. */
 .form-row {
   display: flex;
@@ -901,6 +916,17 @@ table.records td a {
 .checklist label {
   display: block;
   margin-bottom: var(--space-1);
+}
+
+/* Audit logs filter input needs to grow in a fixed toolbar. */
+.audit-filter {
+  flex: 1 1 200px;
+}
+
+/* Note under search results. */
+.search-results-note {
+  margin-top: var(--space-4);
+  color: var(--text-secondary);
 }
 
 /* ── calendar ────────────────────────────────────────────────────────────── */
@@ -1206,4 +1232,610 @@ table.calendar-grid tbody tr:last-child td {
     z-index: var(--z-overlay);
     background: var(--scrim);
   }
+}
+
+/* ── refinements: hover states, elevations, polish ───────────────────────── */
+
+/* Card with a subtle lift on hover. */
+.card {
+  transition: transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.card.section:hover {
+  transform: none;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Table rows: subtle zebra is not needed; a clean hover state is enough. */
+table.records tbody tr:hover td {
+  border-color: var(--border-strong);
+}
+
+/* Header cells stick with a subtle separator. */
+table.records th {
+  border-bottom: 2px solid var(--border-strong);
+}
+
+/* Form fields: stronger focus ring, softer disabled. */
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible,
+.form-grid input:focus-visible,
+.form-grid select:focus-visible,
+.form-grid textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+/* Disabled inputs read as inert, not broken. */
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled,
+.form-grid input:disabled,
+.form-grid select:disabled,
+.form-grid textarea:disabled {
+  background: var(--surface-sunken);
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+/* Buttons: primary gets a subtle glow on hover. */
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+/* Secondary buttons get a filled hover in dark mode too. */
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+/* Empty state: more breathing room, softer border. */
+.empty-state {
+  padding: var(--space-8) var(--space-4);
+  border-style: dashed;
+  border-color: var(--border);
+  background: var(--surface-sunken);
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+}
+
+/* Section headers: tighter, more authoritative. */
+.app-main h1 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+.app-main h2 {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+/* Links: clearer visited state in both themes. */
+a {
+  color: var(--primary);
+  text-underline-offset: 2px;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+a:hover {
+  color: var(--primary-hover);
+}
+
+/* Timeline: the connector line is stronger in dark mode. */
+.timeline-item {
+  border-left-color: var(--border-strong);
+}
+
+.timeline-item::before {
+  background: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+/* Stepper: done steps read as completed, current as active. */
+.step-done {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+  color: var(--success-fg);
+}
+
+.step-current {
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+  color: var(--primary-subtle-fg);
+}
+
+/* Board columns: softer background, clearer drag feedback. */
+.board-column {
+  transition: background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.board-drop {
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+}
+
+/* Kanban cards: subtle hover lift. */
+.board-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.board-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Modal scrim: deeper in dark mode. */
+.modal-scrim {
+  backdrop-filter: blur(2px);
+}
+
+/* Confirm dialog: primary action stands out. */
+.modal-actions .btn-primary {
+  min-width: 90px;
+}
+
+/* KPI cards: stat value gets tabular figures, link cards lift. */
+.card.stat {
+  transition: transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+.card.stat:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Skip link: already themed via vars, just ensure focus ring. */
+.skip-link:focus {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Theme switcher: native select options inherit surface/text. */
+.theme-switcher-select option {
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+/* Reduced motion: kill all transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── page route transitions ─────────────────────────────────────────────── */
+
+/* The route wrapper fades and slides in so navigation never feels like a hard cut. */
+.route-page {
+  animation: route-fade var(--dur-base) var(--ease-out);
+  animation-fill-mode: both;
+}
+
+@keyframes route-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── entrance animations ────────────────────────────────────────────────── */
+
+/* Fade up: used for cards, sections, modals — anything that enters the DOM. */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Fade in: used for alerts, banners, inline messages. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Scale in: used for buttons, chips, small interactive elements. */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Slide in from the left: used for nav drawers, side panels. */
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Pulse: used for empty states, subtle attention. */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Shimmer: used for skeleton loaders. */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* ── entrance utility classes ───────────────────────────────────────────── */
+
+.enter {
+  animation: fade-up var(--dur-base) var(--ease-out) both;
+}
+
+.enter-fast {
+  animation: fade-up var(--dur-fast) var(--ease-out) both;
+}
+
+.enter-slow {
+  animation: fade-up var(--dur-slow) var(--ease-out) both;
+}
+
+.enter-scale {
+  animation: scale-in var(--dur-base) var(--ease-back) both;
+}
+
+.enter-fade {
+  animation: fade-in var(--dur-base) var(--ease-out) both;
+}
+
+/* Staggered entrance: apply .stagger to a parent, children animate in sequence. */
+.stagger > * {
+  opacity: 0;
+  animation: fade-up var(--dur-base) var(--ease-out) both;
+}
+
+.stagger > *:nth-child(1) { animation-delay: var(--stagger); }
+.stagger > *:nth-child(2) { animation-delay: calc(var(--stagger) * 2); }
+.stagger > *:nth-child(3) { animation-delay: calc(var(--stagger) * 3); }
+.stagger > *:nth-child(4) { animation-delay: calc(var(--stagger) * 4); }
+.stagger > *:nth-child(5) { animation-delay: calc(var(--stagger) * 5); }
+.stagger > *:nth-child(6) { animation-delay: calc(var(--stagger) * 6); }
+.stagger > *:nth-child(7) { animation-delay: calc(var(--stagger) * 7); }
+.stagger > *:nth-child(8) { animation-delay: calc(var(--stagger) * 8); }
+
+/* ── hover micro-interactions ───────────────────────────────────────────── */
+
+/* Cards: fluid lift + glow on hover. */
+.card {
+  transition: transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-strong);
+}
+
+.card:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-md);
+}
+
+/* KPI cards: stronger lift. */
+.card.stat:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Section cards: softer hover. */
+.card.section:hover {
+  transform: none;
+  box-shadow: var(--shadow-md);
+}
+
+/* Buttons: press + glow micro-interaction. */
+.btn {
+  transition: transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97) translateY(0);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 0 4px var(--primary-subtle);
+  transform: translateY(-1px);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  box-shadow: 0 0 0 3px rgb(16 24 40 / 8%);
+  transform: translateY(-1px);
+}
+
+/* Form fields: glow on focus, softer disabled. */
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible,
+.form-grid input:focus-visible,
+.form-grid select:focus-visible,
+.form-grid textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 4px var(--primary-subtle);
+  transform: translateY(-1px);
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled,
+.form-grid input:disabled,
+.form-grid select:disabled,
+.form-grid textarea:disabled {
+  background: var(--surface-sunken);
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+/* Links: fluid color + underline shift. */
+a {
+  transition: color var(--dur-fast) var(--ease-out),
+    text-underline-offset var(--dur-fast) var(--ease-out);
+}
+
+a:hover {
+  text-underline-offset: 4px;
+}
+
+/* Nav links: active state with slide underline. */
+.app-nav a {
+  transition: color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.app-nav a:hover {
+  transform: translateY(-1px);
+}
+
+.app-nav a.active {
+  transform: translateY(-1px);
+}
+
+/* Table rows: fluid highlight + slide. */
+table.records tbody tr {
+  transition: background-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+table.records tbody tr:hover {
+  transform: translateX(4px);
+  background: var(--hover);
+}
+
+/* Table rows in kanban: lift on hover. */
+.board-card {
+  transition: transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.board-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+/* Dragging state: subtle rotation + lift. */
+.board-card[draggable='true']:active {
+  transform: rotate(2deg) translateY(-2px);
+  cursor: grabbing;
+}
+
+/* Board columns: gentle highlight on drag-over. */
+.board-drop {
+  animation: board-drop-pulse var(--dur-base) var(--ease-out) infinite alternate;
+}
+
+@keyframes board-drop-pulse {
+  from {
+    box-shadow: 0 0 0 0 var(--primary-subtle);
+  }
+  to {
+    box-shadow: 0 0 0 6px var(--primary-subtle);
+  }
+}
+
+/* Stepper: current step pulses gently. */
+.step-current {
+  animation: step-pulse var(--dur-slow) var(--ease-in-out) infinite alternate;
+}
+
+@keyframes step-pulse {
+  from {
+    box-shadow: 0 0 0 0 var(--primary-subtle);
+  }
+  to {
+    box-shadow: 0 0 0 5px var(--primary-subtle);
+  }
+}
+
+/* Modal: scale-in + fade. */
+.modal {
+  animation: modal-scale var(--dur-base) var(--ease-back) both;
+}
+
+@keyframes modal-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-scrim {
+  animation: scrim-fade var(--dur-base) var(--ease-out) both;
+  backdrop-filter: blur(4px);
+}
+
+@keyframes scrim-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Alerts: slide in from left. */
+.alert {
+  animation: fade-in var(--dur-base) var(--ease-out) both;
+}
+
+/* Empty state: gentle pulse. */
+.empty-state {
+  animation: fade-up var(--dur-base) var(--ease-out) both;
+  border-style: dashed;
+  border-color: var(--border);
+  background: var(--surface-sunken);
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+}
+
+/* Count badge: pop-in. */
+.count-badge {
+  animation: scale-in var(--dur-base) var(--ease-back) both;
+}
+
+/* Theme switcher: smooth color transition. */
+.theme-switcher {
+  transition: border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.theme-switcher:hover {
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+/* ── skeleton loader ────────────────────────────────────────────────────── */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-sunken);
+  border-radius: var(--radius);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--hover),
+    transparent
+  );
+  animation: shimmer var(--dur-slower) var(--ease-in-out) infinite;
+}
+
+.skeleton-text {
+  height: var(--text-base);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-title {
+  height: var(--text-xl);
+  width: 40%;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-line {
+  height: var(--text-sm);
+  width: 60%;
+  margin-bottom: var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-circle {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-full);
+}
+
+/* ── body cross-fade on theme change ────────────────────────────────────── */
+
+body {
+  transition: background-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out);
 }

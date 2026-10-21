@@ -41,7 +41,7 @@ export function Settings(): JSX.Element {
  // role deliberately does not have.
  const isViewer = actor?.role === 'viewer';
  return (
- <div>
+ <div className="enter">
  <h1>Settings</h1>
  <p className="muted">Custom fields, data transfer and workspace members.</p>
  {!isViewer && <CustomFieldsSection />}

@@ -48,7 +48,7 @@ export function RecordCreate({ type }: { type: RecordType }): JSX.Element {
  }
 
  return (
- <div>
+ <div className="enter">
  <p>
  <Link to="..">&larr; Back to {config.plural}</Link>
  </p>

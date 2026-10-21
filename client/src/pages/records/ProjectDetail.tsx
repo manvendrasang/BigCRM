@@ -28,6 +28,7 @@ import { ActivityTimeline } from '../../components/ActivityTimeline';
 import { RelatedTasks } from '../../components/RelatedRecords';
 import { ScheduleMeetingForm } from '../../components/ScheduleMeetingForm';
 import { KpiCard, useConfirm } from '../../components/ui';
+import { Skeleton } from '../../components/ui';
 import {
  FieldInput,
  displayValue,
@@ -182,10 +183,19 @@ export function ProjectDetail(): JSX.Element {
  }
  }
 
- if (isLoading) return <p className="muted" role="status">Loading...</p>;
+ if (isLoading) return (
+<div className="grid stagger">
+<div className="card section enter-fast">
+<Skeleton variant="title" />
+<Skeleton variant="line" />
+<Skeleton variant="line" />
+<Skeleton variant="line" />
+</div>
+</div>
+);
  if (error || !record) {
  return (
- <div>
+ <div className="enter">
  <p>
  <Link to="/deals">&larr; Back to projects</Link>
  </p>
@@ -203,7 +213,7 @@ export function ProjectDetail(): JSX.Element {
  const contactId = field(record, 'contact_id');
 
  return (
- <div>
+ <div className="enter">
  <p>
  <Link to="/deals">&larr; Back to projects</Link>
  </p>
@@ -261,7 +271,7 @@ export function ProjectDetail(): JSX.Element {
  </div>
  ))}
  {companyId !== '--' && (
- <div>
+ <div >
  <dt>Company</dt>
  <dd>
  <Link to={`/companies/${companyId}`}>{companyName ?? companyId}</Link>
@@ -269,7 +279,7 @@ export function ProjectDetail(): JSX.Element {
  </div>
  )}
  {contactId !== '--' && (
- <div>
+ <div >
  <dt>Contact</dt>
  <dd>
  <Link to={`/contacts/${contactId}`}>{contactName ?? contactId}</Link>

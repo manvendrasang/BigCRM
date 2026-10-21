@@ -104,7 +104,7 @@ export function Reports(): JSX.Element {
  }
 
  return (
- <div>
+ <div className="enter">
  <h1>Reports</h1>
  <p className="muted">Aggregated on the server from your workspace only.</p>
 

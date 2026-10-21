@@ -108,9 +108,26 @@ export function CountBadge({ count }: { count: number }): JSX.Element | null {
 //  confirm dialog 
 
 export interface ConfirmOptions {
- title: string;
- message?: string;
- confirmLabel: string;
+  title: string;
+  message?: string;
+  confirmLabel: string;
+}
+
+/**
+ * Skeleton loading placeholder.
+ *
+ * Renders a shimmering block that respects `prefers-reduced-motion` (the
+ * animation is killed by the media query in styles.css). Use it while data
+ * is fetching so the page never feels empty.
+ */
+export function Skeleton({
+  variant = 'text',
+}: {
+  variant?: 'text' | 'title' | 'line' | 'circle';
+}): JSX.Element {
+  return (
+  <span className={`skeleton skeleton-${variant}`} aria-hidden="true" />
+  );
 }
 
 /**

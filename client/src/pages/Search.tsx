@@ -115,7 +115,7 @@ export function GlobalSearch(): JSX.Element {
  }
 
  return (
- <div>
+ <div className="enter">
  <h1>Search</h1>
  <p className="muted">One query across contacts, companies, leads, projects and tasks.</p>
 
@@ -169,7 +169,7 @@ export function GlobalSearch(): JSX.Element {
  )}
 
  {hasSearched && hits.length > 0 && (
- <p className="muted" style={{ marginTop: 12 }}>
+ <p className="muted search-results-note">
  Showing top {PER_TYPE} per type.
  {TYPES.map((t) => ` ${RECORD_CONFIGS[t].plural}: ${totals[t] ?? 0}`).join(' -')}
  </p>
