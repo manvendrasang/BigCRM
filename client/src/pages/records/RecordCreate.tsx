@@ -47,7 +47,12 @@ export function RecordCreate({ type }: { type: RecordType }): JSX.Element {
  if (canAssign && form['assignee_id']) body['assignee_id'] = form['assignee_id'];
  const created = await createRecord<Record<string, unknown>>(type, body);
  const id = typeof created['id'] === 'string' ? created['id'] : null;
- navigate(id ? `../${encodeURIComponent(id)}` : '..');
+ // Absolute, not relative. React Router v6 resolves `..` against the route
+ // *hierarchy*, and the route table is flat (`/tasks/new` is a direct child of
+ // the root, not of `/tasks`), so `..` meant the root -- the browser was sent
+ // to `/<id>`, which matches no route, and the catch-all sent the user to the
+ // dashboard. The new record was created; the user was simply never shown it.
+ navigate(id ? `/${type}/${encodeURIComponent(id)}` : `/${type}`);
  } catch (err) {
  setError(err instanceof ApiError ? err.message : 'Could not create this record.');
  } finally {
@@ -58,7 +63,7 @@ export function RecordCreate({ type }: { type: RecordType }): JSX.Element {
  return (
  <div className="enter">
  <p>
- <Link to="..">&larr; Back to {config.plural}</Link>
+ <Link to={`/${type}`}>&larr; Back to {config.plural}</Link>
  </p>
  <h1>New {config.singular}</h1>
  <form onSubmit={(e) => { void submit(e); }}>
@@ -122,7 +127,7 @@ export function RecordCreate({ type }: { type: RecordType }): JSX.Element {
  <button type="submit" className="btn btn-primary" disabled={isSaving}>
  {isSaving ? 'Creating...' : `Create ${config.singular}`}
  </button>
- <Link className="btn btn-secondary" to="..">
+ <Link className="btn btn-secondary" to={`/${type}`}>
  Cancel
  </Link>
  </div>

@@ -85,6 +85,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # The header of this file promises "lint -> typecheck -> test"; until now
+      # the lint step was the one that was missing.
+      - name: Lint
+        run: npm run lint
+
       # RULE 187: dependency testing, run every build.
       - name: Dependency scan
         run: npm audit --omit=dev --audit-level=high
@@ -128,6 +133,41 @@ jobs:
           path: |
             npm-debug.log*
             server/logs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ── the one end-to-end test, in a real browser ───────────────────────────────
+  # A test nobody runs rots. The service suites mock the network and the jsdom
+  # suites mock the server; only this one can see the cookie, the CSRF header
+  # and the route table wired together. It found two defects the rest of the
+  # suite could not (BIG-40, BIG-41).
+  #
+  # No PostgreSQL service is needed: the test boots its own API against a
+  # throwaway PGlite database, and its own Vite dev server.
+  e2e:
+    name: end-to-end (Chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end smoke test
+        run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: |
+            client/test-results/
+            client/playwright-report/
           retention-days: 7
           if-no-files-found: ignore
 

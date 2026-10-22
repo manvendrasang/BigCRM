@@ -156,7 +156,9 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  if (!confirmed) return;
  try {
  await deleteRecord(type, id);
- navigate('..');
+ // Absolute, not relative: the route table is flat, so `..` resolves to the
+ // root rather than to the list this record came from.
+ navigate(`/${type}`);
  } catch (err) {
  setError(err instanceof ApiError ? err.message : 'Could not delete this record.');
  }
@@ -187,7 +189,7 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  return (
  <div className="enter">
  <p>
- <Link to="..">&larr; Back to {config.plural}</Link>
+ <Link to={`/${type}`}>&larr; Back to {config.plural}</Link>
  </p>
  <p className="alert alert-error" role="alert">
  {error ?? 'Record not found.'}
@@ -206,7 +208,7 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  return (
  <div className="enter">
  <p>
- <Link to="..">&larr; Back to {config.plural}</Link>
+ <Link to={`/${type}`}>&larr; Back to {config.plural}</Link>
  </p>
  <h1>{title}</h1>
 

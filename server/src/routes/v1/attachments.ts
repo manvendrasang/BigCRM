@@ -28,6 +28,30 @@ import {
 export const attachmentsRouter = Router();
 attachmentsRouter.use(authenticate);
 
+// Download is registered before the per-entity list: `/:entityType/:entityId`
+// would otherwise capture `/file/<id>` as entityType='file' and answer 400
+// "Unknown entity type 'file'." -- every attachment download was unreachable
+// while the route still looked present. Static segments must be registered
+// before parameterised ones that could swallow them.
+attachmentsRouter.get(
+ '/file/:id',
+ requirePermission('attachments.read'),
+ asyncRoute(async (req, res) => {
+ const { attachment, bytes } = await downloadAttachment(
+ actorRef(req), String(req.params.id ?? ''));
+ // `nosniff` plus an explicit type stops the browser from second-guessing a
+ // text file into HTML. `attachment` forces download rather than inline
+ // rendering -- a file that renders inline in the app origin runs script in
+ // the app origin, which is exactly the stored-XSS primitive uploads must
+ // not become.
+ res.setHeader('Content-Type', attachment.contentType);
+ res.setHeader('X-Content-Type-Options', 'nosniff');
+ res.setHeader('Content-Disposition',
+ `attachment; filename="${attachment.fileName.replace(/["\r\n]/g, '')}"`);
+ res.send(bytes); // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write -- intentional: binary file download with Content-Disposition: attachment, not HTML rendering
+ }),
+);
+
 attachmentsRouter.get(
  '/:entityType/:entityId',
  requirePermission('attachments.read'),
@@ -79,24 +103,6 @@ attachmentsRouter.post(
  }),
 );
 
-attachmentsRouter.get(
- '/file/:id',
- requirePermission('attachments.read'),
- asyncRoute(async (req, res) => {
- const { attachment, bytes } = await downloadAttachment(
- actorRef(req), String(req.params.id ?? ''));
- // `nosniff` plus an explicit type stops the browser from second-guessing a
- // text file into HTML. `attachment` forces download rather than inline
- // rendering -- a file that renders inline in the app origin runs script in
- // the app origin, which is exactly the stored-XSS primitive uploads must
- // not become.
- res.setHeader('Content-Type', attachment.contentType);
- res.setHeader('X-Content-Type-Options', 'nosniff');
- res.setHeader('Content-Disposition',
- `attachment; filename="${attachment.fileName.replace(/["\r\n]/g, '')}"`);
- res.send(bytes); // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write -- intentional: binary file download with Content-Disposition: attachment, not HTML rendering
- }),
-);
 
 attachmentsRouter.delete(
  '/file/:id',

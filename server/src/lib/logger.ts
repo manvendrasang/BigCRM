@@ -35,7 +35,7 @@ export type SecurityEventName =
  | 'permission.denied' | 'tenant.violation_attempt' | 'idor.blocked'
  | 'rate_limit.blocked' | 'cors.blocked' | 'csrf.blocked'
  | 'upload.rejected' | 'ssrf.blocked' | 'export.created' | 'import.started' | 'import.completed'
- | 'meeting.scheduled' | 'meeting.invited'
+ | 'meeting.scheduled' | 'meeting.invited' | 'meeting.updated' | 'meeting.deleted'
  | 'integration.storage_write'
  | 'retention.swept'
  | 'account.locked' | 'account.unlocked' | 'suspicious_login';

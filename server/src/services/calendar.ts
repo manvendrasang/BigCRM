@@ -18,7 +18,8 @@ import { nowIso } from '../lib/time.ts';
 import { securityLog } from '../lib/logger.ts';
 import type { ActorRef } from './records.ts';
 import { notifyOrgMembers } from './activity.ts';
-import { scheduleEventReminders } from './reminders.ts';
+import { cancelEventReminders, scheduleEventReminders } from './reminders.ts';
+import { writeAudit } from './org.ts';
 
 /** Widest range a single agenda request may cover -- a quarter view. */
 const MAX_RANGE_DAYS = 93;
@@ -560,4 +561,325 @@ export async function getCalendarEvent(
   relatedType: nullable(r['related_type']),
   relatedId: nullable(r['related_id']),
   };
+}
+
+//  meeting lifecycle 
+
+export interface UpdateMeetingInput {
+ entityType?: string;
+ entityId?: string;
+ occurredAt?: string;
+ subject?: string;
+ description?: string | null;
+}
+
+type MeetingRow = {
+ id: string;
+ entity_type: string;
+ entity_id: string;
+ subject: string | null;
+ description: string | null;
+ occurred_at: string;
+ actor_id: string | null;
+ actor_name: string | null;
+};
+
+/** The agenda, the chip and the edit response must all read the same columns. */
+const MEETING_SELECT =
+ `SELECT a.id, a.entity_type, a.entity_id, a.subject, a.description,
+ a.occurred_at, a.actor_id, u.name AS actor_name
+ FROM activities a LEFT JOIN users u ON u.id = a.actor_id`;
+
+/**
+ * Audit write that cannot take its transaction down with it.
+ *
+ * Same reasoning as the records service's private helper: `writeAudit` swallows
+ * its own errors, but a failed statement poisons a PostgreSQL transaction
+ * whether or not the exception was caught. The SAVEPOINT keeps the accepted
+ * risk where it is documented -- the audit row may be missing, nothing else.
+ */
+async function auditMeeting(
+ scope: TenantScope,
+ args: Parameters<typeof writeAudit>[1],
+): Promise<void> {
+ await scope.bestEffort('audit.write', async (s) => {
+ await writeAudit(s.unsafe, args);
+ return true;
+ });
+}
+
+/**
+ * Loads a meeting inside the caller's tenant, or 404s.
+ *
+ * `type = 'meeting'` is part of the predicate rather than a follow-up check: an
+ * activity id belonging to another kind must be indistinguishable from a
+ * missing one, and so must another tenant's meeting.
+ */
+async function loadMeetingRow(
+ scope: TenantScope,
+ actor: ActorRef,
+ meetingId: string,
+): Promise<MeetingRow> {
+ const rows = await scope.query<MeetingRow>(
+ `${MEETING_SELECT}
+ WHERE a.organization_id = $1 AND a.id = $2 AND a.type = 'meeting'`,
+ [actor.organizationId, meetingId],
+ );
+ const row = rows[0];
+ if (!row) throw notFound('Meeting not found.');
+ return row;
+}
+
+/**
+ * Moves or edits a meeting.
+ *
+ * Editing is a permission rather than an ownership question: `activities.update`
+ * is held by manager, admin and owner (`rbac.ts`), so a manager can correct
+ * somebody else's typo on the shared calendar. Sales can schedule but not amend.
+ * As everywhere else in this codebase, hiding the button is not authorisation --
+ * the gate is on the route and the service still re-reads the row tenant-scoped.
+ *
+ * The two advance notices are re-armed only when the start time actually moves.
+ * A corrected subject is not a new appointment, and re-arming on every edit
+ * would re-send both notices for a title change. Comparing instants rather than
+ * strings means a client re-sending the same time is a genuine no-op.
+ */
+export async function updateMeeting(
+ actor: ActorRef,
+ meetingIdRaw: string,
+ input: UpdateMeetingInput,
+ meta: { ip?: string | null; userAgent?: string | null; requestId?: string | null } = {},
+): Promise<CalendarMeeting> {
+ const meetingId = String(meetingIdRaw ?? '').trim().toLowerCase();
+ if (!UUID_RE.test(meetingId)) throw notFound('Meeting not found.');
+
+ const scope = new TenantScope(actor.organizationId);
+ const existing = await loadMeetingRow(scope, actor, meetingId);
+
+ const sets: string[] = [];
+ const params: unknown[] = [];
+ // Named separately from the SQL fragments: the audit allowlist
+ // (`AUDIT_ALLOW_FIELDS`) deliberately does not carry titles, notes or
+ // timestamps, so without this an edit would leave an audit row saying
+ // "something changed" and nothing about what. Recording the column names is
+ // not recording the values, so the minimisation rule still holds.
+ const touched: string[] = [];
+
+ if (input.subject !== undefined) {
+ const subject = String(input.subject ?? '').trim();
+ if (subject.length < 1 || subject.length > 200) {
+ throw validationFailed({ subject: 'Give the meeting a title of 1-200 characters.' });
+ }
+ params.push(subject);
+ sets.push(`subject = $${params.length}`);
+ touched.push('subject');
+ }
+
+ if (input.description !== undefined) {
+ // An explicit null (or an empty string) clears the notes. Writing `''`
+ // instead of NULL would leave two spellings of "no notes" in the table and
+ // make `description === null` an unreliable check for callers.
+ const description = String(input.description ?? '');
+ if (description.length > 2000) {
+ throw validationFailed({ description: 'Keep notes under 2000 characters.' });
+ }
+ params.push(description === '' ? null : description.slice(0, 2000));
+ sets.push(`description = $${params.length}`);
+ touched.push('description');
+ }
+
+ let movedTo: string | null = null;
+ if (input.occurredAt !== undefined) {
+ const when = new Date(String(input.occurredAt ?? ''));
+ if (Number.isNaN(when.getTime())) {
+ throw validationFailed({ occurredAt: 'Enter a valid date and time.' });
+ }
+ movedTo = when.toISOString();
+ params.push(movedTo);
+ sets.push(`occurred_at = $${params.length}`);
+ touched.push('occurred_at');
+ }
+
+ if (input.entityType !== undefined || input.entityId !== undefined) {
+ if (input.entityType === undefined || input.entityId === undefined) {
+ throw validationFailed({ entityType: 'Send both entityType and entityId to move the meeting.' });
+ }
+ const entityType = String(input.entityType).trim();
+ if (!(MEETING_ENTITIES as readonly string[]).includes(entityType)) {
+ throw validationFailed({ entityType: 'Meetings attach to contacts, companies, leads, deals or tasks.' });
+ }
+ const entityId = String(input.entityId).trim().toLowerCase();
+ if (!UUID_RE.test(entityId)) throw notFound('Record not found.');
+ // The new attachment must be a row of this tenant, for the same reason
+ // scheduling checks it: a foreign id must not be confirmed by moving a
+ // meeting onto it.
+ const owner = await scope.queryOne(
+ `SELECT id FROM ${ENTITY_TABLES[entityType as MeetingEntity]}
+ WHERE organization_id = $1 AND id = $2`,
+ [actor.organizationId, entityId],
+ );
+ if (!owner) throw notFound('Record not found.');
+ params.push(entityType);
+ sets.push(`entity_type = $${params.length}`);
+ touched.push('entity_type');
+ params.push(entityId);
+ sets.push(`entity_id = $${params.length}`);
+ touched.push('entity_id');
+ }
+
+ if (sets.length === 0) throw badRequest('No updatable fields were supplied.');
+
+ const moved = movedTo !== null
+ && new Date(movedTo).getTime() !== new Date(existing.occurred_at).getTime();
+
+ const orgParam = params.length + 1;
+ const idParam = params.length + 2;
+
+ const updated = await scope.transaction(async (tx) => {
+ const written = await tx.unsafe.query<{ id: string }>(
+ `UPDATE activities SET ${sets.join(', ')}
+ WHERE organization_id = $${orgParam} AND id = $${idParam} AND type = 'meeting'
+ RETURNING id`,
+ [...params, actor.organizationId, meetingId],
+ );
+ if (!written.rows[0]) throw notFound('Meeting not found.');
+
+ const rows = await tx.query<MeetingRow>(
+ `${MEETING_SELECT}
+ WHERE a.organization_id = $1 AND a.id = $2 AND a.type = 'meeting'`,
+ [actor.organizationId, meetingId],
+ );
+ const row = rows[0];
+ if (!row) throw notFound('Meeting not found.');
+
+ await auditMeeting(tx, {
+ organizationId: actor.organizationId,
+ actorId: actor.userId,
+ actorRole: actor.role,
+ action: 'activities.update',
+ entityType: 'Meeting',
+ entityId: meetingId,
+ before: existing,
+ after: row,
+ metadata: { changed: touched, moved },
+ ip: meta.ip,
+ userAgent: meta.userAgent,
+ requestId: meta.requestId,
+ });
+
+ // A move re-arms; a typo fix leaves the ledger untouched. The upsert inside
+ // `scheduleEventReminders` resets `sent_at`, so a meeting moved after a
+ // notice already went out earns fresh notices at the new times.
+ if (moved && movedTo) {
+ const dueAt = movedTo;
+ await tx.bestEffort('reminder.schedule', async (s) => {
+ await scheduleEventReminders(s, {
+ organizationId: actor.organizationId, kind: 'meeting', id: meetingId, dueAt,
+ });
+ return true;
+ });
+ }
+
+ return row;
+ });
+
+ securityLog('meeting.updated', {
+ userId: actor.userId,
+ organizationId: actor.organizationId,
+ meetingId,
+ moved,
+ });
+ return toMeeting(updated);
+}
+
+/**
+ * Deletes a meeting.
+ *
+ * `activities.delete` is held by admin and owner only. That is stricter than
+ * `tasks.delete`, which sales hold, and it is deliberate: a meeting has
+ * invitees, and cancelling somebody else's appointment is not a decision this
+ * matrix hands to the person who booked it. Relaxing that is a matrix change in
+ * `rbac.ts`, not a change here.
+ *
+ * The delete is permanent rather than soft: `activities` carries no
+ * `deleted_at`, the agenda has never filtered on one, and
+ * `meeting_invites.meeting_id` is `ON DELETE CASCADE` -- so the invitations,
+ * each invitee's inbox entry (`listMyInvites` joins the meeting) and the
+ * calendar chip all disappear together.
+ *
+ * Pending advance notices are retired explicitly. The delivery handler would
+ * no-op on a missing row anyway, but a cancelled meeting should not leave a
+ * live promise to notify sitting in the ledger.
+ *
+ * Invitees are not notified of the cancellation. Delivered `notifications` rows
+ * are immutable history and are not retracted; the honest statement is "the
+ * meeting is gone from the calendar", not a retroactive fan-out. If cancellation
+ * notices are wanted, that is a new notification type, not a silent side effect
+ * of a DELETE.
+ */
+export async function deleteMeeting(
+ actor: ActorRef,
+ meetingIdRaw: string,
+ meta: { ip?: string | null; userAgent?: string | null; requestId?: string | null } = {},
+): Promise<void> {
+ const meetingId = String(meetingIdRaw ?? '').trim().toLowerCase();
+ if (!UUID_RE.test(meetingId)) throw notFound('Meeting not found.');
+
+ const scope = new TenantScope(actor.organizationId);
+ const existing = await loadMeetingRow(scope, actor, meetingId);
+
+ await scope.transaction(async (tx) => {
+ const removed = await tx.unsafe.query<{ id: string }>(
+ `DELETE FROM activities
+ WHERE organization_id = $1 AND id = $2 AND type = 'meeting'
+ RETURNING id`,
+ [actor.organizationId, meetingId],
+ );
+ if (!removed.rows[0]) throw notFound('Meeting not found.');
+
+ await tx.bestEffort('reminder.cancel', async (s) => {
+ await cancelEventReminders(s, actor.organizationId, 'meeting', meetingId);
+ return true;
+ });
+
+ await auditMeeting(tx, {
+ organizationId: actor.organizationId,
+ actorId: actor.userId,
+ actorRole: actor.role,
+ action: 'activities.delete',
+ entityType: 'Meeting',
+ entityId: meetingId,
+ before: existing,
+ after: null,
+ ip: meta.ip,
+ userAgent: meta.userAgent,
+ requestId: meta.requestId,
+ });
+
+ // The parent record's timeline keeps an honest record: the meeting is gone,
+ // and the thing it was attached to should say so. Written after the delete,
+ // on the parent entity, so it cannot resurrect the meeting row.
+ await tx.bestEffort('activity.write', async (s) => {
+ await s.unsafe.query(
+ `INSERT INTO activities
+ (id, organization_id, type, actor_id, entity_type, entity_id,
+ subject, description, metadata, occurred_at, created_at)
+ VALUES ($1,$2,'status_change',$3,$4,$5,$6,$7,$8::jsonb,now(),now())`,
+ [
+ newId(), actor.organizationId, actor.userId,
+ existing.entity_type, existing.entity_id,
+ existing.subject,
+ 'Meeting deleted',
+ JSON.stringify({ meetingId, occurredAt: existing.occurred_at }),
+ ],
+ );
+ return true;
+ });
+ });
+
+ securityLog('meeting.deleted', {
+ userId: actor.userId,
+ organizationId: actor.organizationId,
+ meetingId,
+ });
 }

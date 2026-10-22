@@ -150,8 +150,9 @@ workspace.
 ```bash
 npm run typecheck   # both workspaces, 0 errors
 npm run lint        # 0 errors
-npm test            # server suite, 905 assertions
+npm test            # server suite, 1238 assertions across 27 suites
 npm run test:coverage --workspace=@bigcrm/client
+npm run test:e2e    # Playwright smoke test (needs `npx playwright install chromium` once)
 ```
 
 ---
@@ -240,9 +241,10 @@ proxy and TLS requirements.
 ## Tests
 
 ```bash
-npm test                     # server: 905 assertions, 21 suites
+npm test                     # server: 1238 assertions, 27 suites
 npm run test:security        # 14 threat scenarios
-npm test --workspace=@bigcrm/client        # client: 170 tests
+npm test --workspace=@bigcrm/client        # client: 173 tests
+npm run test:e2e             # Playwright: one end-to-end smoke test in Chromium
 npm run test:coverage --workspace=@bigcrm/server
 ```
 
@@ -286,7 +288,7 @@ for the client use `npm run dev:web -- --port 5174`.
 | Document | Covers |
 |---|---|
 | `README.md` | Features, roles, file map |
-| `CHANGELOG.md` | What changed and when |
+| `docs/PROJECT_STATUS.md` | What exists, what is verified, what changed |
 | `docs/API.md` | Every endpoint |
 | `docs/DEPLOYMENT.md` | Production deployment |
 | `docs/SECURITY.md` | Security controls |

@@ -424,8 +424,18 @@ function prepare(type: RecordType, input: Row, partial = false): Prepared {
  const assignee = uuid(input.assignee_id, 'assignee_id');
  if (assignee) out.assignee_id = assignee;
  }
+ // An explicit null / empty string on an update clears the due date: a task
+ // moved back to the backlog has no due time, and `refreshTaskReminders`
+ // retires its two advance notices by re-deriving them from the row. On a
+ // create the same input simply means "undated", so it is omitted rather than
+ // written as NULL. A value that is present but unparseable still 400s from
+ // `dateOrNull`, so "clear" and "invalid" cannot be confused.
+ if (partial && (input.due_date === null || input.due_date === '')) {
+ out.due_date = null;
+ } else {
  const due = dateOrNull(input.due_date, 'due_date');
  if (due) out.due_date = due;
+ }
  const relatedType = enumOf(input.related_type,
  ['contact', 'company', 'lead', 'deal'] as const, 'related_type');
  if (relatedType) out.related_type = relatedType;
@@ -1076,8 +1086,11 @@ export async function updateRecord(
 
  // A task that gains a due date has just popped up on the shared calendar, so
  // the workspace is told about it. A task that merely moves to a different date
- // is not announced again -- it was already on the calendar.
- if (type === 'tasks' && changes.due_date !== undefined && existing['due_date'] === null) {
+ // is not announced again -- it was already on the calendar. An explicit `null`
+ // is a cleared date, not a gained one: `changes.due_date` is present-but-null
+ // when a task is sent back to the backlog, and announcing that as "scheduled
+ // for null" would be noise (and untruthful).
+ if (type === 'tasks' && typeof changes.due_date === 'string' && existing['due_date'] === null) {
  await tx.bestEffort('notification.write', async (s) => {
  await notifyOrgMembers(s, actor, {
  type: 'calendar_task',

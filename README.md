@@ -1,6 +1,3 @@
-THIS REPO IS NOW FREEZED
-
-
 # BigCRM
 
 A multi-tenant CRM for offices that create their own employee accounts rather
@@ -9,7 +6,7 @@ calendar, reports, notifications, attachments, import/export, saved views and an
 append-only audit log, on a Node + PostgreSQL backend with a React frontend.
 
 - **Setup:** [INSTALL.md](INSTALL.md)
-- **History:** [CHANGELOG.md](CHANGELOG.md)
+- **Status and history:** [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)
 - **Every endpoint:** [docs/API.md](docs/API.md)
 - **Deployment:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
@@ -34,7 +31,7 @@ and restore, a per-record activity timeline, custom fields, and attachments.
 
 ### Workspace
 
-- **Calendar** with meetings, invitees, responses and an agenda
+- **Calendar** with meetings, invitees, responses and an agenda. Meetings can be amended or cancelled, and a moved meeting re-arms its advance notices
 - **Reports**: pipeline, funnel, load and overview; export to CSV
 - **Saved views**: private per user, or shared with the organization
 - **Global search** across every record type
@@ -101,7 +98,7 @@ authority -- the client asks the server what it may do rather than deciding.
 | Path | Purpose |
 |---|---|
 | `INSTALL.md` | Setup from zero |
-| `CHANGELOG.md` | What changed and when |
+| `docs/PROJECT_STATUS.md` | What exists, what is verified, what changed |
 | `docs/` | Architecture, API, deployment, security, testing, operations |
 | `Dockerfile` | Multi-stage production image |
 | `docker-compose.yml` | PostgreSQL, Mailpit, LocalStack KMS for development |
@@ -126,7 +123,7 @@ authority -- the client asks the server what it may do rather than deciding.
 | `src/middleware/readOnly.ts` | Read-only degraded mode |
 | `src/lib/` | Passwords, JWT, KMS, encryption, CSV, sanitisation, metrics, logging |
 | `src/integrations/` | Email, S3, KMS providers |
-| `src/tests/` | 21 suites: `unit/`, `integration/`, `security/` |
+| `src/tests/` | 27 suites: `unit/`, `integration/`, `security/` |
 
 Key service modules:
 
@@ -156,6 +153,7 @@ Key service modules:
 | `src/components/` | Shell, navigation, timeline, record extras, UI primitives |
 | `src/pages/` | One page per route |
 | `src/pages/records/` | List, detail, create, and the project window |
+| `e2e/` | Playwright smoke test: the whole app in a real browser |
 | `public/theme-init.js` | Applies light before the first frame |
 | `src/styles/` | Design tokens and styles |
 
@@ -181,6 +179,8 @@ npm run dev:web       # client on :5173
 | `npm run test:security` | 14 threat scenarios |
 | `npm run test:coverage --workspace=@bigcrm/server` | c8 with enforced thresholds |
 | `npm test --workspace=@bigcrm/client` | Client suite |
+| `npm run test:e2e` | Playwright smoke test (boots its own API and client) |
+| `npm run worker` | The background worker: queue handlers and the reminder sweep |
 | `npm run build` | API to `server/dist/`, client to `client/dist/` |
 
 ## License

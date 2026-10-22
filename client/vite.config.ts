@@ -17,7 +17,11 @@ export default defineConfig({
  strictPort: true,
  proxy: {
  '/api': {
- target: 'http://localhost:3000',
+ // The API origin is configurable so the end-to-end run can point at its own
+ // API (a throwaway database on its own port) without colliding with a
+ // development server that is already running. The default is unchanged, so
+ // `npm run dev` behaves exactly as before.
+ target: process.env['VITE_API_TARGET'] ?? 'http://localhost:3000',
  changeOrigin: false,
  },
  },
@@ -42,8 +46,8 @@ export default defineConfig({
  reportsDirectory: './coverage',
  include: ['src/**/*.{ts,tsx}'],
  exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**'],
- // Measured 2026-10-15 (118 tests): lines 47.4, functions 63.1,
- // branches 74.6, statements 47.4 -- page tests for Calendar, DealBoard,
+ // Measured 2026-10-22 (173 tests): lines 58.06, functions 66.91,
+ // branches 78.02, statements 58.06 -- page tests for Calendar, DealBoard,
  // the project window, Notifications and related records raised the
  // floor. Thresholds sit just below it so a coverage regression fails
  // the build. Raising them further means testing more pages first -- do

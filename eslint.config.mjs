@@ -163,6 +163,23 @@ export default tseslint.config(
  },
  },
 
+ //  end-to-end specs
+ //
+ // The Playwright specs live in `client/e2e/`, which is deliberately outside
+ // `client/tsconfig.json` -- the browser bundle must not pull in the test
+ // runner. That leaves them with no tsconfig project, so the type-aware parser
+ // cannot resolve them and the type-aware rules cannot run. They are typechecked
+ // separately (`npm run typecheck:e2e -w client`, `client/tsconfig.e2e.json`)
+ // and linted here with the base config only, like the config files below.
+ {
+ files: ['client/e2e/**/*.ts'],
+ ...tseslint.configs.disableTypeChecked,
+ rules: {
+ ...tseslint.configs.disableTypeChecked.rules,
+ 'no-console': 'off',
+ },
+ },
+
  // Standalone .mjs / config files belong to no tsconfig project, so the
  // type-aware parser cannot resolve them. Lint them with the base config only.
  {

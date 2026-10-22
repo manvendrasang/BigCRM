@@ -16,10 +16,10 @@
 import express from 'express';
 const { Router } = express;
 import { z } from 'zod';
-import { asyncRoute, actorRef } from './helpers.ts';
+import { asyncRoute, actorRef, meta } from './helpers.ts';
 import { authenticate, csrfGuard, requirePermission } from '../../middleware/security.ts';
 import { validationFailed } from '../../lib/errors.ts';
-import { getCalendar, getCalendarEvent, inviteToMeeting, listInvitees, listMyInvites, respondToInvite, scheduleMeeting } from '../../services/calendar.ts';
+import { deleteMeeting, getCalendar, getCalendarEvent, inviteToMeeting, listInvitees, listMyInvites, respondToInvite, scheduleMeeting, updateMeeting } from '../../services/calendar.ts';
 
 export const calendarRouter = Router();
 calendarRouter.use(authenticate);
@@ -76,6 +76,58 @@ calendarRouter.post(
  description: parsed.data.description,
  });
  res.status(201).json({ data: created });
+ }),
+);
+
+/**
+ * Amending and cancelling a meeting.
+ *
+ * `activities.update` (manager/admin/owner) and `activities.delete`
+ * (admin/owner) are the gates -- the same permission strings the activity
+ * routes use, so the matrix stays in one place. `csrfGuard` runs before the
+ * permission check for the same reason it does on every other write.
+ */
+const updateMeetingSchema = z.object({
+ entityType: z.string().trim().min(1).max(40).optional(),
+ entityId: z.string().trim().min(1).max(64).optional(),
+ occurredAt: z.string().trim().min(1).max(64).optional(),
+ subject: z.string().trim().min(1).max(200).optional(),
+ description: z.string().max(2000).nullable().optional(),
+}).refine((v) => Object.keys(v).length > 0, {
+ message: 'Send at least one field to change.',
+});
+
+calendarRouter.patch(
+ '/meetings/:id',
+ csrfGuard,
+ requirePermission('activities.update'),
+ asyncRoute(async (req, res) => {
+ const parsed = updateMeetingSchema.safeParse(req.body);
+ if (!parsed.success) {
+ const fields: Record<string, string> = {};
+ for (const issue of parsed.error.issues) {
+ const key = issue.path.join('.') || '_';
+ if (!(key in fields)) fields[key] = issue.message;
+ }
+ throw validationFailed(fields);
+ }
+ const updated = await updateMeeting(
+ actorRef(req),
+ String(req.params.id ?? ''),
+ parsed.data,
+ meta(req),
+ );
+ res.json({ data: updated });
+ }),
+);
+
+calendarRouter.delete(
+ '/meetings/:id',
+ csrfGuard,
+ requirePermission('activities.delete'),
+ asyncRoute(async (req, res) => {
+ await deleteMeeting(actorRef(req), String(req.params.id ?? ''), meta(req));
+ res.status(204).end();
  }),
 );
 

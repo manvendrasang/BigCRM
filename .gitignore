@@ -147,6 +147,12 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
+# Playwright output: test results, traces and the HTML report. Generated on
+# every run, and a trace is a recording of a session -- never committed.
+client/test-results/
+client/playwright-report/
+client/.playwright/
+
 # Astro generated types
 .astro/
 
