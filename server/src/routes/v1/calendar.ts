@@ -6,6 +6,12 @@
  * /meetings` schedules a meeting activity on a record the caller's tenant
  * owns. Reads need `activities.read`; scheduling needs `activities.create`,
  * which viewers do not hold.
+ *
+ * `GET /events/:kind/:id` is the single read behind the shared event window:
+ * the calendar chip and the calendar notification both open it, so "view the
+ * event" is one payload rather than two drifting ones. It is gated on the same
+ * pair the agenda needs (`activities.read` + `tasks.read`), so it adds no reach
+ * beyond what the month view already publishes.
  */
 import express from 'express';
 const { Router } = express;
@@ -13,7 +19,7 @@ import { z } from 'zod';
 import { asyncRoute, actorRef } from './helpers.ts';
 import { authenticate, csrfGuard, requirePermission } from '../../middleware/security.ts';
 import { validationFailed } from '../../lib/errors.ts';
-import { getCalendar, inviteToMeeting, listInvitees, listMyInvites, respondToInvite, scheduleMeeting } from '../../services/calendar.ts';
+import { getCalendar, getCalendarEvent, inviteToMeeting, listInvitees, listMyInvites, respondToInvite, scheduleMeeting } from '../../services/calendar.ts';
 
 export const calendarRouter = Router();
 calendarRouter.use(authenticate);
@@ -70,6 +76,20 @@ calendarRouter.post(
  description: parsed.data.description,
  });
  res.status(201).json({ data: created });
+ }),
+);
+
+calendarRouter.get(
+ '/events/:kind/:id',
+ requirePermission('activities.read'),
+ requirePermission('tasks.read'),
+ asyncRoute(async (req, res) => {
+ const event = await getCalendarEvent(
+ actorRef(req),
+ String(req.params.kind ?? ''),
+ String(req.params.id ?? ''),
+ );
+ res.json({ data: event });
  }),
 );
 

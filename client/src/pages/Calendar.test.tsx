@@ -65,6 +65,24 @@ function stub(role: string): { dayKey: string } {
  if (url.includes('/calendar/meetings/')) {
  return jsonResponse({ data: { invited: [{ id: 'i1' }], alreadyInvited: [] } });
  }
+ if (url.includes('/calendar/events/')) {
+ const isMeeting = url.includes('/calendar/events/meeting/');
+ return jsonResponse({
+ data: isMeeting
+ ? {
+ id: 'm1', kind: 'meeting', title: 'Kickoff', description: 'Bring the deck.',
+ when: at('10:00'), status: null, priority: null,
+ creatorId: 'u1', creatorName: 'Ava', assigneeId: null, assigneeName: null,
+ entityType: 'contact', entityId: 'c1', relatedType: null, relatedId: null,
+ }
+ : {
+ id: 't1', kind: 'task', title: 'Proposal', description: null,
+ when: at('12:00'), status: 'todo', priority: 'high',
+ creatorId: 'u1', creatorName: 'Ava', assigneeId: null, assigneeName: null,
+ entityType: null, entityId: null, relatedType: null, relatedId: null,
+ },
+ });
+ }
  if (url.includes('/calendar?')) {
  return jsonResponse({
  data: {
@@ -131,6 +149,34 @@ describe('Calendar page', () => {
  const agenda = screen.getByRole('region', { name: 'Agenda' });
  expect(within(agenda).getByRole('link', { name: 'Kickoff' })).toHaveAttribute('href', '/contacts/c1');
  expect(within(agenda).getByRole('link', { name: 'Proposal' })).toHaveAttribute('href', '/tasks/t1');
+ });
+
+ it('clicking a calendar chip opens the shared event window', async () => {
+ const user = userEvent.setup();
+ stub('owner');
+ renderCalendar();
+
+ await screen.findByRole('columnheader', { name: 'Mon' });
+ await user.click(screen.getByRole('button', { name: 'Next month' }));
+
+ // A meeting chip opens the meeting view of the window.
+ await user.click(await screen.findByTitle('Kickoff'));
+ let dialog = await screen.findByRole('dialog');
+ expect(within(dialog).getByText('Calendar meeting')).toBeInTheDocument();
+ expect(await within(dialog).findByText('Bring the deck.')).toBeInTheDocument();
+ expect(within(dialog).getByRole('link', { name: 'Open record' })).toHaveAttribute(
+ 'href', '/contacts/c1',
+ );
+
+ // Close it and open the task chip: the same window, task-shaped.
+ await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+ await user.click(screen.getByTitle('Proposal'));
+ dialog = await screen.findByRole('dialog');
+ expect(await within(dialog).findByText('Calendar task')).toBeInTheDocument();
+ expect(within(dialog).getByText('todo')).toBeInTheDocument();
+ expect(within(dialog).getByRole('link', { name: 'Open record' })).toHaveAttribute(
+ 'href', '/tasks/t1',
+ );
  });
 
  it('inviting opens the member picker and confirms', async () => {

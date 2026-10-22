@@ -10,6 +10,7 @@
 import { TenantScope } from '../repositories/base.ts';
 import { notFound } from '../lib/errors.ts';
 import { nowIso } from '../lib/time.ts';
+import { newId } from '../lib/ids.ts';
 import type { ActorRef } from './records.ts';
 
 export type AuditFilters = {
@@ -171,6 +172,94 @@ export async function createNotification(
  input.entityType ?? null, input.entityId ?? null, nowIso()],
  );
  return id;
+}
+
+/** What every fan-out carries, whatever its audience. */
+export interface NotificationFanout {
+  type: string; title: string; body?: string; link?: string;
+  entityType?: string; entityId?: string;
+}
+
+/** Live members of this workspace, optionally without one of them. */
+async function liveMemberIds(
+  scope: TenantScope,
+  organizationId: string,
+  excludeUserId?: string,
+): Promise<string[]> {
+  const sql = `SELECT m.user_id FROM organization_members m
+  JOIN users u ON u.id = m.user_id
+  WHERE m.organization_id = $1 AND u.deleted_at IS NULL
+  ${excludeUserId ? 'AND m.user_id <> $2' : ''}`;
+  const rows = await scope.query<{ user_id: string }>(
+    sql,
+    excludeUserId ? [organizationId, excludeUserId] : [organizationId],
+  );
+  return rows.map((r) => String(r.user_id));
+}
+
+/** One INSERT per recipient. The fan-out's only write path. */
+async function insertNotifications(
+  scope: TenantScope,
+  organizationId: string,
+  recipientIds: readonly string[],
+  input: NotificationFanout,
+): Promise<number> {
+  const title = input.title.trim().slice(0, 200);
+  if (!title) return 0;
+
+  const body = (input.body ?? '').slice(0, 2000);
+  const link = input.link?.slice(0, 500) ?? null;
+  const type = input.type.slice(0, 80);
+  const entityType = input.entityType ?? null;
+  const entityId = input.entityId ?? null;
+
+  for (const userId of recipientIds) {
+  await scope.unsafe.query(
+  `INSERT INTO notifications
+  (id,organization_id,user_id,type,title,body,link,entity_type,entity_id,created_at)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+  [newId(), organizationId, userId, type, title, body, link,
+  entityType, entityId, nowIso()],
+  );
+  }
+  return recipientIds.length;
+}
+
+/**
+ * Fan a calendar event out to the whole workspace.
+ *
+ * A task or a meeting that lands on the shared calendar is visible work, so
+ * every member is told about it -- except the person who created it. They
+ * already know; a notification to yourself is noise.
+ *
+ * Written against a `TenantScope` so the call site can run it inside the same
+ * transaction as the event itself: either both land or neither does.
+ */
+export async function notifyOrgMembers(
+  scope: TenantScope,
+  actor: { organizationId: string; userId: string },
+  input: NotificationFanout,
+): Promise<number> {
+  const recipients = await liveMemberIds(scope, actor.organizationId, actor.userId);
+  return insertNotifications(scope, actor.organizationId, recipients, input);
+}
+
+/**
+ * Fan a notification out to every member of the workspace, whatever their
+ * role, and including whoever caused it.
+ *
+ * The create-time fan-out above deliberately skips its own author; a due
+ * reminder does not. "It is due in an hour" is a fact about the work rather
+ * than a reaction to somebody's action, and the person who booked the meeting
+ * is exactly as likely to be the one running late for it.
+ */
+export async function notifyAllMembers(
+  scope: TenantScope,
+  organizationId: string,
+  input: NotificationFanout,
+): Promise<number> {
+  const recipients = await liveMemberIds(scope, organizationId);
+  return insertNotifications(scope, organizationId, recipients, input);
 }
 
 /** Record timeline: activities on one entity, newest first. Powers the detail-page history. */

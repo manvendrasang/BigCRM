@@ -46,6 +46,9 @@ export interface NotificationRow {
  title: string;
  body: string;
  link: string | null;
+ /** Set on event notifications so the row can open the shared event window. */
+ entityType: string | null;
+ entityId: string | null;
  readAt: string | null;
  createdAt: string;
 }
@@ -179,6 +182,42 @@ export async function getCalendar(from: string, to: string): Promise<CalendarAge
  meetings: Array.isArray(b.meetings) ? b.meetings : [],
  tasks: Array.isArray(b.tasks) ? b.tasks : [],
  };
+}
+
+export type CalendarEventKind = 'meeting' | 'task';
+
+/**
+ * One event, as the shared window shows it.
+ *
+ * Mirrors `CalendarEventDetail` on the server: the calendar chips and the
+ * notification list both call `getCalendarEvent`, so the same window shows
+ * the same fields no matter where it was opened from.
+ */
+export interface CalendarEventDetail {
+ kind: CalendarEventKind;
+ id: string;
+ title: string;
+ description: string | null;
+ when: string | null;
+ status: string | null;
+ priority: string | null;
+ creatorId: string | null;
+ creatorName: string | null;
+ assigneeId: string | null;
+ assigneeName: string | null;
+ entityType: string | null;
+ entityId: string | null;
+ relatedType: string | null;
+ relatedId: string | null;
+}
+
+export async function getCalendarEvent(
+ kind: CalendarEventKind,
+ id: string,
+): Promise<CalendarEventDetail> {
+ return api.get<CalendarEventDetail>(
+ `/calendar/events/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`,
+ );
 }
 
 export async function scheduleMeeting(input: {

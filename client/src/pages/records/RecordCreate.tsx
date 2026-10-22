@@ -11,6 +11,8 @@ import { ApiError } from '../../lib/api';
 import { createRecord } from '../../lib/records';
 import type { RecordType } from '../../lib/records';
 import { RECORD_CONFIGS } from '../../lib/recordConfig';
+import { AssigneeSelect, canAssignTasks, useAssignableMembers } from '../../components/AssigneeField';
+import { useAuth } from '../../lib/auth';
 
 export function RecordCreate({ type }: { type: RecordType }): JSX.Element {
  const config = RECORD_CONFIGS[type];
@@ -18,6 +20,11 @@ export function RecordCreate({ type }: { type: RecordType }): JSX.Element {
  const [form, setForm] = useState<Record<string, string>>({});
  const [isSaving, setIsSaving] = useState(false);
  const [error, setError] = useState<string | null>(null);
+ const { actor } = useAuth();
+ // Assignment is offered only to the roles the server would accept it from;
+ // admins are maintainers, not dispatchers, so they do not get the picker.
+ const canAssign = type === 'tasks' && canAssignTasks(actor?.role);
+ const { members, error: membersError } = useAssignableMembers(canAssign);
 
  async function submit(e: React.FormEvent): Promise<void> {
  e.preventDefault();
@@ -37,6 +44,7 @@ export function RecordCreate({ type }: { type: RecordType }): JSX.Element {
  }
  body[f.key] = f.input === 'number' ? Number(raw) : raw;
  }
+ if (canAssign && form['assignee_id']) body['assignee_id'] = form['assignee_id'];
  const created = await createRecord<Record<string, unknown>>(type, body);
  const id = typeof created['id'] === 'string' ? created['id'] : null;
  navigate(id ? `../${encodeURIComponent(id)}` : '..');
@@ -94,7 +102,22 @@ export function RecordCreate({ type }: { type: RecordType }): JSX.Element {
  )}
  </label>
  ))}
+ {canAssign && (
+ <label className="field">
+ <span>Assignee</span>
+ <AssigneeSelect
+ members={members}
+ value={form['assignee_id'] ?? ''}
+ onChange={(v) => setForm((p) => ({ ...p, assignee_id: v }))}
+ />
+ </label>
+ )}
  </div>
+ {membersError && (
+ <p className="alert alert-error" role="alert">
+ {membersError}
+ </p>
+ )}
  <div className="form-actions">
  <button type="submit" className="btn btn-primary" disabled={isSaving}>
  {isSaving ? 'Creating...' : `Create ${config.singular}`}

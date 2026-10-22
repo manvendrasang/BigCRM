@@ -134,7 +134,7 @@ const TENANT_TABLES = [
  'contact_tags', 'company_tags', 'lead_tags', 'deal_tags', 'custom_fields',
  'custom_field_values', 'attachments', 'comments', 'notifications', 'audit_logs',
  'security_events', 'invitations', 'api_tokens', 'saved_views', 'import_jobs',
- 'export_jobs', 'idempotency_keys', 'mfa_challenges',
+ 'export_jobs', 'idempotency_keys', 'mfa_challenges', 'event_reminders',
 ];
 
 /**

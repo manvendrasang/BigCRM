@@ -13,6 +13,7 @@ import { authenticate, requirePermission, csrfGuard, searchLimiter } from '../..
 import {
  listRecords, getRecord, createRecord, updateRecord, softDeleteRecord, restoreRecord,
  convertLead, moveDealStage, createPipelineWithStages, listPipelineStages,
+ listTaskAssignees,
  type RecordType,
 } from '../../services/records.ts';
 import { badRequest } from '../../lib/errors.ts';
@@ -54,6 +55,17 @@ const listHandler = (type: RecordType) => asyncRoute(async (req, res) => {
  },
  });
 });
+
+//  task assignees
+//
+// Registered before the generated `/tasks/:id` route below, so `assignees` is
+// matched here rather than read as a task id. The service applies the same
+// role rule the write path enforces, so the picker cannot offer a target the
+// save would reject.
+recordsRouter.get('/tasks/assignees', requirePermission('tasks.assign'),
+ asyncRoute(async (req, res) => {
+ res.json({ data: await listTaskAssignees(actorRef(req)) });
+ }));
 
 for (const type of ['contacts', 'companies', 'leads', 'deals', 'pipelines', 'pipeline_stages', 'tasks', 'notes', 'tags'] as const) {
  const r = Router({ mergeParams: true });

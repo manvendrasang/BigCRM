@@ -17,6 +17,8 @@ import { newId } from '../lib/ids.ts';
 import { nowIso } from '../lib/time.ts';
 import { securityLog } from '../lib/logger.ts';
 import type { ActorRef } from './records.ts';
+import { notifyOrgMembers } from './activity.ts';
+import { scheduleEventReminders } from './reminders.ts';
 
 /** Widest range a single agenda request may cover -- a quarter view. */
 const MAX_RANGE_DAYS = 93;
@@ -187,6 +189,27 @@ export async function scheduleMeeting(
  [id, actor.organizationId, actor.userId, entityType, entityId,
  subject, description.slice(0, 2000), when.toISOString()],
  );
+
+ // A meeting on the shared calendar is visible work: every other member of the
+ // workspace is told about it. The scheduler is excluded -- they just made it.
+ await notifyOrgMembers(scope, actor, {
+ type: 'calendar_meeting',
+ title: `Meeting scheduled: ${subject}`,
+ body: `${actor.email} scheduled "${subject}" for ${when.toISOString()}`,
+ link: '/calendar',
+ entityType: 'meeting',
+ entityId: id,
+ });
+ // The meeting also earns its two advance notices: one an hour before it
+ // starts, one fifteen minutes before. Best-effort, like the announcement above
+ // -- a scheduling hiccup must not undo a meeting somebody just booked.
+ await scope.bestEffort('reminder.schedule', async (s) => {
+ await scheduleEventReminders(s, {
+ organizationId: actor.organizationId, kind: 'meeting', id, dueAt: when.toISOString(),
+ });
+ return true;
+ });
+
  const rows = await scope.query(
  `SELECT a.id, a.entity_type, a.entity_id, a.subject, a.description,
  a.occurred_at, a.actor_id, u.name AS actor_name
@@ -422,4 +445,119 @@ export async function listMyInvites(actor: ActorRef, status?: string): Promise<M
  entityId: String(r.entity_id),
  inviterName: r.inviter_name === null ? null : String(r.inviter_name),
  }));
+}
+
+//  event detail
+
+/**
+ * The two things that can appear on the calendar. A meeting is an activity
+ * row; a task is a task row with a due date.
+ */
+export type CalendarEventKind = 'meeting' | 'task';
+
+/**
+ * One event, shaped for the shared "what is this?" window.
+ *
+ * The calendar chips and the notification list both open this shape, so there
+ * is exactly one read behind both surfaces and they cannot drift apart: a
+ * change to the window is a change to this payload.
+ *
+ * Reachability mirrors the agenda. The route gates on `activities.read` and
+ * `tasks.read` -- the same pair the month view requires -- and every query is
+ * tenant-scoped, so this endpoint publishes nothing the calendar does not
+ * already publish to that role.
+ */
+export interface CalendarEventDetail {
+  kind: CalendarEventKind;
+  id: string;
+  title: string;
+  description: string | null;
+  /** When the meeting starts, or when the task is due. */
+  when: string | null;
+  status: string | null;
+  priority: string | null;
+  creatorId: string | null;
+  creatorName: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  /** For a meeting: the record it is attached to. */
+  entityType: string | null;
+  entityId: string | null;
+  /** For a task: the record it belongs to, when it has one. */
+  relatedType: string | null;
+  relatedId: string | null;
+}
+
+const nullable = (v: unknown): string | null => (v === null || v === undefined ? null : String(v));
+
+export async function getCalendarEvent(
+  actor: ActorRef,
+  kindRaw: unknown,
+  idRaw: unknown,
+): Promise<CalendarEventDetail> {
+  const kind = String(kindRaw ?? '').trim().toLowerCase();
+  if (kind !== 'meeting' && kind !== 'task') throw notFound('Event not found.');
+  const id = String(idRaw ?? '').trim().toLowerCase();
+  if (!UUID_RE.test(id)) throw notFound('Event not found.');
+
+  const scope = new TenantScope(actor.organizationId);
+
+  if (kind === 'meeting') {
+  const rows = await scope.query(
+  `SELECT a.id, a.entity_type, a.entity_id, a.subject, a.description,
+  a.occurred_at, a.actor_id, u.name AS actor_name
+  FROM activities a LEFT JOIN users u ON u.id = a.actor_id
+  WHERE a.organization_id = $1 AND a.id = $2 AND a.type = 'meeting'`,
+  [actor.organizationId, id],
+  );
+  const r = rows[0];
+  if (!r) throw notFound('Event not found.');
+  return {
+  kind: 'meeting',
+  id: String(r['id']),
+  title: String(r['subject'] ?? 'Meeting'),
+  description: nullable(r['description']),
+  when: nullable(r['occurred_at']),
+  status: null,
+  priority: null,
+  creatorId: nullable(r['actor_id']),
+  creatorName: nullable(r['actor_name']),
+  assigneeId: null,
+  assigneeName: null,
+  entityType: String(r['entity_type']),
+  entityId: String(r['entity_id']),
+  relatedType: null,
+  relatedId: null,
+  };
+  }
+
+  const rows = await scope.query(
+  `SELECT t.id, t.title, t.description, t.status, t.priority, t.due_date,
+  t.creator_id, t.assignee_id, t.related_type, t.related_id,
+  cu.name AS creator_name, au.name AS assignee_name
+  FROM tasks t
+  LEFT JOIN users cu ON cu.id = t.creator_id
+  LEFT JOIN users au ON au.id = t.assignee_id
+  WHERE t.organization_id = $1 AND t.id = $2 AND t.deleted_at IS NULL`,
+  [actor.organizationId, id],
+  );
+  const r = rows[0];
+  if (!r) throw notFound('Event not found.');
+  return {
+  kind: 'task',
+  id: String(r['id']),
+  title: String(r['title']),
+  description: nullable(r['description']),
+  when: nullable(r['due_date']),
+  status: String(r['status']),
+  priority: String(r['priority']),
+  creatorId: nullable(r['creator_id']),
+  creatorName: nullable(r['creator_name']),
+  assigneeId: nullable(r['assignee_id']),
+  assigneeName: nullable(r['assignee_name']),
+  entityType: null,
+  entityId: null,
+  relatedType: nullable(r['related_type']),
+  relatedId: nullable(r['related_id']),
+  };
 }

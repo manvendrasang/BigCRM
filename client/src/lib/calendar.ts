@@ -52,3 +52,20 @@ export function shiftMonth(year: number, month: number, delta: number): { year: 
 
 export const MONTH_LABEL = (year: number, month: number): string =>
  new Date(Date.UTC(year, month, 1)).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+const RECORD_PATH: Record<string, string> = {
+  contact: 'contacts',
+  company: 'companies',
+  lead: 'leads',
+  deal: 'deals',
+  task: 'tasks',
+};
+
+/**
+ * Internal path to a record's detail page, or null when the type has none.
+ *
+ * One map for the calendar chip, the agenda entry and the event window, so a
+ * meeting's "open the record" link cannot point three different places.
+ */
+export const recordPath = (entityType: string | null, entityId: string | null): string | null =>
+  entityType && entityId && RECORD_PATH[entityType] ? `/${RECORD_PATH[entityType]}/${entityId}` : null;

@@ -87,6 +87,25 @@ export async function restoreRecord(type: RecordType, id: string): Promise<void>
  await api.post(`/${type}/${encodeURIComponent(id)}/restore`);
 }
 
+export interface TaskAssignee {
+ id: string;
+ name: string | null;
+ email: string;
+ role: string;
+}
+
+/**
+ * The people the caller may hand a task to.
+ *
+ * The server returns [] for roles without assignment authority and never
+ * offers the owner to a manager, so the picker and the save path agree by
+ * construction rather than by two copies of the same rule.
+ */
+export async function listTaskAssignees(): Promise<TaskAssignee[]> {
+ const body = await api.get<unknown>('/tasks/assignees');
+ return Array.isArray(body) ? (body as TaskAssignee[]) : [];
+}
+
 /** Converts a lead into a contact/company/deal. Lead-only. */
 export async function convertLead(
  id: string,

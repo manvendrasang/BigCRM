@@ -372,10 +372,11 @@ deferred, so every row names what *is* already in place.
 | Cross-entity global search | **Done (item 7)** | Client fans out to five tenant-scoped endpoints; no server UNION | Server-side full-text would need its own threat model |
 | Dashboard / reports | **Done (item 7)** | `services/reports.ts` with centralised definitions (RULE 152), 15 assertions | -- |
 | Import / export jobs | **Done (item 8)** | `services/transfers.ts`, CSV hardening, idempotency, per-row errors | Synchronous; a queue-backed runner for 50k+ rows not built |
-| Background jobs / queue | **Infra done 2026-10-14** | `0007_job_queue`, atomic SKIP LOCKED claims, `npm run worker`, 20 assertions; no producers yet -- export runner designated first | SQS seam is the 4-function contract; producers unchanged by a swap |
+| Background jobs / queue | **Infra done 2026-10-14** | `0007_job_queue`, atomic SKIP LOCKED claims, `npm run worker`, 20 assertions; first producer is the due-reminder scheduler (`0010`, `services/reminders.ts`) | SQS seam is the 4-function contract; producers unchanged by a swap |
 | Webhooks | **Removed 2026-10-14** | Owner decision: routes, dispatcher, fan-out, tables (`0006`), client page, tests, and the unused `SIEM_WEBHOOK_URL` stub all excised; SSRF guard stays | History kept in BIG-31/36/37 |
 | Audit log reads | **Done (second wave)** | `services/activity.ts` + `/org/audit-logs`; list view omits `before_json`/`after_json` | BIG-33 fixed: responses are camelCase |
 | Notifications | **Done (second wave)** | Org-AND-user scoped; another user's id 404s | Unread badge wired into the nav header 2026-10-14 |
+| Due reminders | **Done** | Every meeting and dated task earns two advance notices (1h, 15m) to every role, creator included. `0010_event_reminders` is an exactly-once ledger, not a queue: the sweep claims a row in one statement, the handler claims `sent_at` and writes the notices in one transaction | Notices are armed by the writer and delivered by `npm run worker`, so a deployment without the worker schedules but never sends |
 | Activity timeline | **Done (second wave)** | `/activities/:entityType/:entityId` | Rendered on the record Detail page 2026-10-14 |
 | OAuth / SSO | **Declined 2026-10-14** | Internal office software: internal logins only, no external IdP | Revisit with the `ExternalIdentity` design if outsiders ever log in |
 | Read-only degraded mode | **Done (second wave)** | `SECURITY_READ_ONLY_MODE` on `env.security`; writes 503, reads pass; 7 assertions | Switch is env, not DB -- the DB is the untrusted part |

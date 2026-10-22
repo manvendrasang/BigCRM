@@ -16,6 +16,7 @@ import {
  type ActorRef,
 } from '../../services/records.ts';
 import { registerUser } from '../../services/auth.ts';
+import { createMember } from '../../services/org.ts';
 
 const brief = (v: unknown): string => String(v).slice(0, 60);
 const trim = (e: unknown): string => {
@@ -47,6 +48,11 @@ const mkOrg = async (name: string, email: string) => {
 
 const acme = await mkOrg('Acme', 'rec-acme@corp.io');
 const globex = await mkOrg('Globex', 'rec-globex@corp.io');
+// A second, live member of Acme. Task assignment targets members, so the
+// "somebody else" task below must name one -- a foreign user id is not a target.
+const acmeSales = await createMember(acme, {
+ email: 'rec-acme-sales@corp.io', role: 'sales', name: 'Sales Rep',
+});
 const viewerAcme: ActorRef = { ...acme, role: 'viewer' };
 
 console.log('\n=== companies ===');
@@ -301,7 +307,7 @@ console.log('\n=== viewer role: only their own tasks, and only the status ===');
   title: 'Viewer own task', status: 'todo', assignee_id: acme.userId,
  });
  const theirs = await createRecord(acme, 'tasks', {
-  title: 'Someone else task', status: 'todo', assignee_id: globex.userId,
+  title: 'Someone else task', status: 'todo', assignee_id: acmeSales.user.id,
  });
 
  const list = await listRecords(viewerAcme, 'tasks');
@@ -328,6 +334,64 @@ console.log('\n=== viewer role: only their own tasks, and only the status ===');
 
  const ownerUpdates = await attempt(() => updateRecord(acme, 'tasks', String(theirs.record.id), { status: 'in_progress' }));
  T('a non-viewer still updates any task', ownerUpdates.ok, ownerUpdates);
+}
+
+console.log('\n=== task assignment: owner and manager only, and never the owner as a target ===');
+{
+ const managerAcme: ActorRef = { ...acme, role: 'manager' };
+ const adminAcme: ActorRef = { ...acme, role: 'admin' };
+ const salesAcme: ActorRef = { ...acme, role: 'sales' };
+
+ const byOwner = await attempt(() => createRecord(acme, 'tasks', {
+  title: 'Owner assigns to sales', status: 'todo', assignee_id: acmeSales.user.id,
+ }));
+ T('the owner may assign to any member', byOwner.ok, byOwner);
+
+ const managerToOwner = await attempt(() => createRecord(managerAcme, 'tasks', {
+  title: 'Manager assigns to owner', status: 'todo', assignee_id: acme.userId,
+ }));
+ T('a manager may not assign to the owner', !managerToOwner.ok, managerToOwner);
+
+ const managerToSales = await attempt(() => createRecord(managerAcme, 'tasks', {
+  title: 'Manager assigns to sales', status: 'todo', assignee_id: acmeSales.user.id,
+ }));
+ T('a manager may assign to a non-owner', managerToSales.ok, managerToSales);
+
+ const adminAssign = await attempt(() => createRecord(adminAcme, 'tasks', {
+  title: 'Admin assigns', status: 'todo', assignee_id: acmeSales.user.id,
+ }));
+ T('an admin holds no assignment authority', !adminAssign.ok, adminAssign);
+
+ const salesAssign = await attempt(() => createRecord(salesAcme, 'tasks', {
+  title: 'Sales assigns', status: 'todo', assignee_id: acmeSales.user.id,
+ }));
+ T('a sales rep holds no assignment authority', !salesAssign.ok, salesAssign);
+
+ const outsider = await attempt(() => createRecord(acme, 'tasks', {
+  title: 'Assign to a foreign user', status: 'todo', assignee_id: globex.userId,
+ }));
+ T('the owner cannot assign to a user outside the workspace', !outsider.ok, outsider);
+
+ const unassigned = await attempt(() => createRecord(salesAcme, 'tasks', {
+  title: 'Sales task without an assignee', status: 'todo',
+ }));
+ T('any creator may leave a task unassigned', unassigned.ok, unassigned);
+
+ // Reassignment (and clearing) obeys the same rule as assignment.
+ const taskId = unassigned.ok ? String(unassigned.v.record.id) : '';
+ const managerReassign = await attempt(() => updateRecord(managerAcme, 'tasks', taskId, {
+  assignee_id: acmeSales.user.id,
+ }));
+ T('a manager may reassign to a non-owner', managerReassign.ok, managerReassign);
+
+ const managerReassignOwner = await attempt(() => updateRecord(managerAcme, 'tasks', taskId, {
+  assignee_id: acme.userId,
+ }));
+ T('a manager may not reassign to the owner', !managerReassignOwner.ok, managerReassignOwner);
+
+ const ownerClear = await attempt(() => updateRecord(acme, 'tasks', taskId, { assignee_id: null }));
+ T('the owner may clear an assignment',
+  ownerClear.ok && ownerClear.v.record.assignee_id === null, ownerClear);
 }
 
 

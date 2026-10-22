@@ -33,6 +33,7 @@ import { ScheduleMeetingForm } from '../../components/ScheduleMeetingForm';
 import { useConfirm } from '../../components/ui';
 import { Skeleton } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
+import { AssigneeSelect, canAssignTasks, useAssignableMembers } from '../../components/AssigneeField';
 
 export function displayValue(type: RecordType, record: unknown, key: string): string {
  if (type === 'deals' && key === 'value_c') {
@@ -77,6 +78,9 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  // viewer may change.
  const canEdit = !isViewer || type === 'tasks';
  const canDelete = !isViewer;
+ // Only the owner and a manager may assign; admins are maintainers.
+ const canAssign = type === 'tasks' && canAssignTasks(actor?.role);
+ const { members, error: membersError } = useAssignableMembers(canAssign);
  const editFields = (config.editFields ?? config.createFields).filter(
  (f) => !isViewer || type !== 'tasks' || f.key === 'status',
  );
@@ -104,6 +108,10 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  for (const f of editFields) {
  initial[f.key] = inputValue(record, f.key);
  }
+ if (canAssign) {
+ const current = field(record, 'assignee_id');
+ initial['assignee_id'] = current === '--' ? '' : current;
+ }
  setForm(initial);
  setFormError(null);
  setIsEditing(true);
@@ -125,6 +133,9 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  if (!raw) continue;
  body[f.key] = f.input === 'number' ? Number(raw) : raw;
  }
+ // Empty means "unassigned": send it explicitly, because omitting the field
+ // would leave the current assignee in place instead of clearing it.
+ if (canAssign) body['assignee_id'] = (form['assignee_id'] ?? '').trim() || null;
  setRecord(await updateRecord<unknown>(type, id, body));
  setIsEditing(false);
  setActionMessage('Saved.');
@@ -186,6 +197,11 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  }
 
  const title = firstTitle(type, record, config.singular);
+ const currentAssignee = type === 'tasks' ? field(record, 'assignee_id') : '--';
+ const knownAssignee = members.find((m) => m.id === currentAssignee);
+ const assigneeLabel = currentAssignee === '--'
+ ? 'Unassigned'
+ : knownAssignee?.name || knownAssignee?.email || currentAssignee;
 
  return (
  <div className="enter">
@@ -209,6 +225,12 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  <dd>{displayValue(type, record, c.key)}</dd>
  </div>
  ))}
+ {canAssign && (
+ <div>
+ <dt>Assignee</dt>
+ <dd>{assigneeLabel}</dd>
+ </div>
+ )}
  </dl>
  <div className="form-actions">
  {canEdit && (
@@ -269,7 +291,22 @@ export function RecordDetail({ type }: { type: RecordType }): JSX.Element {
  />
  </label>
  ))}
+ {canAssign && (
+ <label className="field">
+ <span>Assignee</span>
+ <AssigneeSelect
+ members={members}
+ value={form['assignee_id'] ?? ''}
+ onChange={(v) => setForm((prev) => ({ ...prev, assignee_id: v }))}
+ />
+ </label>
+ )}
  </div>
+ {membersError && (
+ <p className="alert alert-error" role="alert">
+ {membersError}
+ </p>
+ )}
  <div className="form-actions">
  <button type="submit" className="btn btn-primary" disabled={isSaving}>
  {isSaving ? 'Saving...' : 'Save changes'}

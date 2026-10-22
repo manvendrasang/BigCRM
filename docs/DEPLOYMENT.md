@@ -33,7 +33,7 @@ Internet
  -> ALB (TLS 1.2+, HSTS, target private:port)
  -> ECS Fargate services in PRIVATE subnets, no public IP
   api (2 tasks across 2 AZs)
-  worker (imports, exports, webhooks, retention)
+  worker (due reminders, imports, exports, retention)
  -> RDS PostgreSQL (private, Multi-AZ, KMS, PITR)
  -> S3 (Block Public Access, SSE-KMS, versioning)
  -> Secrets Manager - KMS - CloudTrail - CloudWatch

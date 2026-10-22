@@ -9,8 +9,10 @@
  * first in the agenda so the morning view answers "what needs me" directly.
  *
  * Scheduling itself lives on the record detail page, where the entity is
- * known -- this page reads. A 403 (no `activities.read`) degrades to a muted
- * note rather than a blank shell.
+ * known -- this page reads. Every chip is a button that opens the shared event
+ * window (`CalendarEventModal`), which is also what a calendar notification
+ * opens from the notification list. A 403 (no `activities.read`) degrades to a
+ * muted note rather than a blank shell.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -19,6 +21,8 @@ import { getCalendar, inviteToMeeting, listInvitees, listMyInvites, respondToInv
 import type { CalendarMeeting, CalendarTask, MeetingInvitee, MyInvite } from '../lib/workspace';
 import { buildMonthGrid, shiftMonth, MONTH_LABEL } from '../lib/calendar';
 import { EmptyState, Skeleton } from '../components/ui';
+import { CalendarEventModal } from '../components/CalendarEventModal';
+import type { CalendarEventTarget } from '../components/CalendarEventModal';
 import { useAuth } from '../lib/auth';
 
 const ENTITY_PATH: Record<string, string> = {
@@ -70,6 +74,7 @@ export function Calendar(): JSX.Element {
   const { actor } = useAuth();
   const canInvite = actor?.role !== 'viewer';
 
+  const [eventTarget, setEventTarget] = useState<CalendarEventTarget | null>(null);
   const [inviteTarget, setInviteTarget] = useState<AgendaEntry | null>(null);
   const [directory, setDirectory] = useState<MeetingInvitee[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -98,6 +103,8 @@ export function Calendar(): JSX.Element {
       await respondToInvite(id, status);
       await loadInbox();
     } catch {
+      // An invite the server refuses to answer is not worth interrupting
+      // anybody for; the inbox simply stays as it was.
     } finally {
       setAnsweringId(null);
     }
@@ -300,13 +307,15 @@ export function Calendar(): JSX.Element {
     </button>
     <div className="cal-chips">
     {entries.slice(0, 3).map((e) => (
-    <span
+    <button
     key={`${e.kind}-${e.key}`}
+    type="button"
     className={`cal-chip cal-chip-${e.kind}${e.done ? ' cal-chip-done' : ''}${e.overdue ? ' cal-chip-overdue' : ''}`}
     title={e.title}
+    onClick={() => setEventTarget({ kind: e.kind, id: e.key })}
     >
     {e.title}
-    </span>
+    </button>
     ))}
     {entries.length > 3 && (
     <span className="cal-more">+{entries.length - 3} more</span>
@@ -450,6 +459,7 @@ export function Calendar(): JSX.Element {
     </div>
     </div>
     )}
+    <CalendarEventModal target={eventTarget} onClose={() => setEventTarget(null)} />
     </div>
     );
 }

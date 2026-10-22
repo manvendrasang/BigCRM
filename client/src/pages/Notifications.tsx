@@ -4,6 +4,10 @@
  * Lists the caller's own notifications with an unread badge, and offers
  * mark-one-read and mark-all-read. The unread count is also surfaced in the
  * header via a badge on the nav link.
+ *
+ * A notification that names a calendar event opens the shared event window --
+ * the same component, and the same read, as a calendar chip. Everything else
+ * follows its stored link.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -15,12 +19,28 @@ import {
 } from '../lib/workspace';
 import type { NotificationRow } from '../lib/workspace';
 import { EmptyState } from '../components/ui';
+import { CalendarEventModal } from '../components/CalendarEventModal';
+import type { CalendarEventTarget } from '../components/CalendarEventModal';
+
+/**
+ * A notification that names a calendar event opens the shared event window
+ * instead of navigating. Meeting invites and the calendar-task /
+ * calendar-meeting fan-outs all carry `entityType` + `entityId`, so they all
+ * land in the same window the calendar chip opens.
+ */
+const eventTargetOf = (n: NotificationRow): CalendarEventTarget | null => {
+  if (!n.entityId) return null;
+  if (n.entityType === 'meeting') return { kind: 'meeting', id: n.entityId };
+  if (n.entityType === 'task') return { kind: 'task', id: n.entityId };
+  return null;
+};
 
 export function Notifications(): JSX.Element {
  const [items, setItems] = useState<NotificationRow[]>([]);
  const [unread, setUnread] = useState(0);
  const [error, setError] = useState<string | null>(null);
  const [busy, setBusy] = useState(false);
+ const [eventTarget, setEventTarget] = useState<CalendarEventTarget | null>(null);
 
  const load = useCallback(async () => {
  try {
@@ -95,12 +115,29 @@ export function Notifications(): JSX.Element {
  <tbody>
  {items.map((n) => (
  <tr key={n.id}>
- {/* Links are server-issued internal paths (e.g. `/calendar`
- on a meeting invite, `/settings?member=<id>` on a password-reset
- request); anything else renders as text so a stored absolute URL
- can never become a link out. Following one marks it read. */}
+ {/* A notification that names a calendar event opens the shared
+ event window, which is also what a calendar chip opens. Any other
+ server-issued internal path (e.g. `/settings?member=<id>`) renders
+ as a router link; anything else renders as text so a stored
+ absolute URL can never become a link out. Following either marks
+ the notification read. */}
  <td>
- {n.link && n.link.startsWith('/') ? (
+ {eventTargetOf(n) ? (
+ <button
+ type="button"
+ className="link-button"
+ onClick={() => {
+ if (!n.readAt) {
+ void markNotificationRead(n.id)
+ .catch(() => {})
+ .then(() => load());
+ }
+ setEventTarget(eventTargetOf(n));
+ }}
+ >
+ {n.title}
+ </button>
+ ) : n.link && n.link.startsWith('/') ? (
  <Link
  to={n.link}
  onClick={() => {
@@ -137,6 +174,7 @@ export function Notifications(): JSX.Element {
  </table>
  </div>
  )}
+ <CalendarEventModal target={eventTarget} onClose={() => setEventTarget(null)} />
  </div>
  );
 }

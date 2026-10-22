@@ -71,6 +71,7 @@ const P = {
  savedViewsManage: 'saved_views.manage',
  importsManage: 'imports.manage',
  exportsManage: 'exports.manage',
+ tasksAssign: 'tasks.assign',
 } as const;
 
 const crud = (resource: string, verbs: readonly string[] = ['read', 'create', 'update', 'delete']): string[] =>
@@ -145,7 +146,7 @@ export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<string>> = {
  ...crud('attachments', ['create', 'delete']),
  ...crud('custom_fields', ['create', 'update']),
  ...crud('saved_views', ['create', 'update', 'delete']),
- P.teamsRead,
+ P.teamsRead, P.tasksAssign,
  ]),
 
  admin: new Set([
@@ -199,7 +200,7 @@ export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<string>> = {
  P.orgRead, P.orgUpdate, P.orgDelete,
  P.usersRead, P.usersCreate, P.usersInvite, P.usersUpdate, P.usersRemove, P.transfer,
  P.usersResetPassword,
- P.teamsRead, P.teamsManage,
+ P.teamsRead, P.teamsManage, P.tasksAssign,
  P.reportsRead, P.reportsExport,
  P.settingsRead, P.settingsUpdate,
  P.auditRead,

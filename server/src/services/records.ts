@@ -36,6 +36,8 @@ import {
  normaliseCountry, displayName,
 } from './normalise.ts';
 import { writeAudit } from './org.ts';
+import { notifyOrgMembers } from './activity.ts';
+import { scheduleEventReminders } from './reminders.ts';
 import type { Role } from './rbac.ts';
 
 export type ActorRef = {
@@ -413,8 +415,15 @@ function prepare(type: RecordType, input: Row, partial = false): Prepared {
  if (status) out.status = status;
  const priority = enumOf(input.priority, ['low', 'medium', 'high', 'urgent'] as const, 'priority');
  if (priority) out.priority = priority;
+ // An explicit null / empty string on an update clears the assignment. On a
+ // create the same input simply means "unassigned", so it is omitted rather
+ // than written as NULL.
+ if (partial && (input.assignee_id === null || input.assignee_id === '')) {
+ out.assignee_id = null;
+ } else {
  const assignee = uuid(input.assignee_id, 'assignee_id');
  if (assignee) out.assignee_id = assignee;
+ }
  const due = dateOrNull(input.due_date, 'due_date');
  if (due) out.due_date = due;
  const relatedType = enumOf(input.related_type,
@@ -592,6 +601,103 @@ function buildFilters(type: RecordType, filters: Row | undefined, params: unknow
 export type ListResult = { data: Row[]; total: number; limit: number; offset: number };
 
 /**
+ * Task assignment scope by role.
+ *
+ * Rules (from the requirements):
+ * - Owner can assign tasks to anyone.
+ * - Manager can assign tasks to anyone except the organization owner.
+ * - Admins play no role here -- they are system maintainers only.
+ * - No other role may assign tasks.
+ */
+/**
+ * Task assignment rules.
+ *
+ * The requirement, stated once so every call site obeys the same rules:
+ *
+ * * **Owner** may assign a task to anybody in the workspace.
+ * * **Manager** may assign a task to anybody EXCEPT the organization owner.
+ * * **Admin** holds no assignment authority at all. Admins are system
+ *   maintainers: they keep the record CRUD they always had, but they do not
+ *   get to hand out other people's work.
+ * * Every other role (sales, viewer) may not assign a task either.
+ *
+ * The rule is enforced against the *target's* role, resolved from
+ * `organization_members` at request time -- never from a client-supplied role,
+ * and never from a role carried on the task row.
+ */
+export type TaskAssignmentVerdict = { allowed: true } | { allowed: false; reason: string };
+
+export async function checkTaskAssignment(
+  scope: TenantScope,
+  actor: ActorRef,
+  assigneeId: string | null,
+): Promise<TaskAssignmentVerdict> {
+  // Authority to assign at all.
+  if (actor.role !== 'owner' && actor.role !== 'manager') {
+    return { allowed: false, reason: 'Only the owner or a manager can assign tasks.' };
+  }
+
+  // Clearing an assignment is not putting work on anybody, so the two roles
+  // that may assign may also unassign.
+  if (assigneeId === null) return { allowed: true };
+
+  // The assignee must be a live member of THIS workspace. An id from another
+  // tenant, a deleted account or a non-member is not an assignable target.
+  const member = await scope.queryOne<{ role: string }>(
+    `SELECT m.role FROM organization_members m
+    JOIN users u ON u.id = m.user_id
+    WHERE m.organization_id = $1 AND m.user_id = $2 AND u.deleted_at IS NULL`,
+    [actor.organizationId, assigneeId],
+  );
+  if (!member) {
+    return { allowed: false, reason: 'That person is not a member of this workspace.' };
+  }
+
+  // A manager may not put work on the owner. The owner may.
+  if (member.role === 'owner' && actor.role !== 'owner') {
+    return { allowed: false, reason: 'A manager cannot assign tasks to the owner.' };
+  }
+
+  return { allowed: true };
+}
+
+export interface TaskAssignee {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string;
+}
+
+/**
+ * The people an actor may hand a task to.
+ *
+ * Mirrors `checkTaskAssignment` exactly, so the picker can never offer a
+ * target the save would reject: the owner sees every live member, a manager
+ * sees everybody except the owner, and every other role sees nobody (they hold
+ * no assignment authority, so the picker does not exist for them).
+ */
+export async function listTaskAssignees(actor: ActorRef): Promise<TaskAssignee[]> {
+  if (actor.role !== 'owner' && actor.role !== 'manager') return [];
+  const scope = new TenantScope(actor.organizationId);
+  const rows = await scope.query<Row>(
+    `SELECT u.id, u.name, u.email, m.role
+    FROM organization_members m
+    JOIN users u ON u.id = m.user_id
+    WHERE m.organization_id = $1 AND u.deleted_at IS NULL
+    ORDER BY u.name, u.email`,
+    [actor.organizationId],
+  );
+  const members: TaskAssignee[] = rows.map((r) => ({
+    id: String(r['id']),
+    name: r['name'] === null ? null : String(r['name']),
+    email: String(r['email']),
+    role: String(r['role']),
+  }));
+  // A manager may not assign work to the owner; the owner may assign to all.
+  return actor.role === 'owner' ? members : members.filter((m) => m.role !== 'owner');
+}
+
+/**
  * Viewer task scope.
  *
  * A viewer is a read-only seat on every record EXCEPT their own work items:
@@ -706,6 +812,42 @@ export async function getRecord(
 
 //  write 
 
+/**
+ * Re-derives a task's two advance notices from the row as it now stands.
+ *
+ * One rule rather than four branches that can each forget a case: a moved date
+ * re-arms the notices at the new times, a cleared or finished one retires them,
+ * a deleted one finds no live row and retires them, and restoring one brings
+ * them back. Every write path that can change a task calls this instead of
+ * deciding for itself what "due" currently means.
+ *
+ * Best-effort by the same argument as the announcement: a scheduling hiccup
+ * must not roll back the task it describes. If the ledger is left stale the
+ * handler re-reads the row and delivers nothing, so the failure mode is a
+ * missed nudge rather than a wrong one.
+ */
+async function refreshTaskReminders(
+ tx: TenantScope,
+ actor: ActorRef,
+ taskId: string,
+): Promise<void> {
+ await tx.bestEffort('reminder.schedule', async (s) => {
+ const row = await s.queryOne(
+ `SELECT status, due_date FROM tasks
+ WHERE organization_id = $1 AND id = $2 AND deleted_at IS NULL`,
+ [actor.organizationId, taskId],
+ );
+ const status = String(row?.['status'] ?? 'todo');
+ const due = row?.['due_date'] ?? null;
+ const retired = !row || status === 'completed' || status === 'cancelled' || due === null;
+ await scheduleEventReminders(s, {
+ organizationId: actor.organizationId, kind: 'task', id: taskId,
+ dueAt: retired ? null : String(due),
+ });
+ return true;
+ });
+}
+
 export type WriteResult = { record: Row; created: boolean };
 
 export async function createRecord(
@@ -717,6 +859,14 @@ export async function createRecord(
  const scope = new TenantScope(actor.organizationId);
  const prepared = prepare(type, input);
 
+
+ // Task assignment is role-gated: only the owner and a manager may set an
+ // assignee, and a manager may not assign to the owner. Checked before any
+ // write, so a refused assignment never leaves a half-created task behind.
+ if (type === 'tasks' && prepared.assignee_id !== undefined) {
+ const verdict = await checkTaskAssignment(scope, actor, String(prepared.assignee_id));
+ if (!verdict.allowed) throw forbidden(verdict.reason);
+ }
  // The UI create form doesn't ask for pipeline / stage, so fall back to the
  // org's default pipeline with stages. Prefer a pipeline that already has
  // stages; otherwise create the default pipeline with stages.
@@ -800,6 +950,28 @@ export async function createRecord(
  metadata: { recordType: type },
  });
 
+ // A task with a due date lands on the shared calendar, so every other member
+ // of the workspace is told about it. Best-effort: a failed notification must
+ // not undo the task, and vice versa is impossible -- both share this
+ // transaction, so either both land or neither does.
+ if (type === 'tasks' && full.due_date) {
+ await tx.bestEffort('notification.write', async (s) => {
+ await notifyOrgMembers(s, actor, {
+ type: 'calendar_task',
+ title: `Task scheduled: ${String(full.title ?? 'Task')}`,
+ body: `${actor.email} scheduled "${String(full.title ?? 'Task')}" for ${String(full.due_date)}`,
+ link: '/calendar',
+ entityType: 'task',
+ entityId: String(full.id),
+ });
+ return true;
+ });
+ }
+
+ // Every task earns its two advance notices, dated or not -- for an undated one
+ // this is a no-op, and for a dated one it arms the hour and the quarter-hour.
+ if (type === 'tasks') await refreshTaskReminders(tx, actor, String(full.id));
+
  return row;
  });
 
@@ -825,6 +997,15 @@ export async function updateRecord(
  if (spec.updatable.includes(k)) changes[k] = v;
  }
  if (Object.keys(changes).length === 0) throw badRequest('No updatable fields were supplied.');
+
+ // Reassigning a task is an assignment, and obeys the same role rules as
+ // creating one: owner may assign to anybody, a manager may not assign to the
+ // owner, and admins hold no assignment authority.
+ if (type === 'tasks' && Object.prototype.hasOwnProperty.call(changes, 'assignee_id')) {
+ const target = changes.assignee_id === null ? null : String(changes.assignee_id);
+ const verdict = await checkTaskAssignment(scope, actor, target);
+ if (!verdict.allowed) throw forbidden(verdict.reason);
+ }
 
  // A viewer may answer their own task -- and nothing else. `status` is the only
  // client-supplied field allowed; `completed_at` is derived from it by
@@ -893,6 +1074,27 @@ export async function updateRecord(
  metadata: { changed: columns },
  });
 
+ // A task that gains a due date has just popped up on the shared calendar, so
+ // the workspace is told about it. A task that merely moves to a different date
+ // is not announced again -- it was already on the calendar.
+ if (type === 'tasks' && changes.due_date !== undefined && existing['due_date'] === null) {
+ await tx.bestEffort('notification.write', async (s) => {
+ await notifyOrgMembers(s, actor, {
+ type: 'calendar_task',
+ title: `Task scheduled: ${String(changes.title ?? existing['title'] ?? 'Task')}`,
+ body: `${actor.email} scheduled "${String(changes.title ?? existing['title'] ?? 'Task')}" for ${String(changes.due_date)}`,
+ link: '/calendar',
+ entityType: 'task',
+ entityId: id.toLowerCase(),
+ });
+ return true;
+ });
+ }
+
+ // Whatever changed -- date, status, or nothing the client can see -- the
+ // notices are re-derived from the row rather than guessed from the diff.
+ if (type === 'tasks') await refreshTaskReminders(tx, actor, id.toLowerCase());
+
  return row;
  });
 
@@ -937,6 +1139,7 @@ export async function softDeleteRecord(
  type: 'status_change', entityType: spec.label, entityId: id.toLowerCase(),
  description: 'deleted',
  });
+ if (type === 'tasks') await refreshTaskReminders(tx, actor, id.toLowerCase());
  });
  return;
  }
@@ -993,6 +1196,8 @@ export async function restoreRecord(
  type: 'status_change', entityType: spec.label, entityId: id.toLowerCase(),
  description: 'restored',
  });
+ // A restored dated task is back on the calendar, notices and all.
+ if (type === 'tasks') await refreshTaskReminders(tx, actor, id.toLowerCase());
  });
 }
 

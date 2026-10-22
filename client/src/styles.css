@@ -1012,6 +1012,20 @@ table.calendar-grid tbody tr:last-child td {
   font-size: var(--text-xs);
 }
 
+/* A chip is the calendar marker and opens the event window, so it is a real
+   button -- keyboard reachable, and visibly interactive on hover. */
+button.cal-chip {
+  width: 100%;
+  border: 0;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.cal-chip:hover {
+  filter: brightness(0.95);
+}
+
 .cal-chip-meeting {
   background: var(--primary-subtle);
   color: var(--primary-subtle-fg);
@@ -1340,6 +1354,28 @@ a {
 
 a:hover {
   color: var(--primary-hover);
+}
+
+/* A title that opens the event window rather than navigating: it looks like a
+   link because it is one in every way that matters to the reader, but it
+   behaves as a button so the same window opens from the notification list and
+   from the calendar. */
+.link-button {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--primary-hover);
+  text-decoration: none;
 }
 
 /* Timeline: the connector line is stronger in dark mode. */

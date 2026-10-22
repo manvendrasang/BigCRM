@@ -9,15 +9,18 @@
  * 4. One write powers two views: a scheduled meeting appears in the record
  * timeline as well as the agenda.
  * 5. Responses are camelCase (the BIG-33 class of defect).
+ * 6. A task or meeting that lands on the calendar notifies every member except
+ *    the one who created it, and the event window reads the same row from the
+ *    calendar and from the notification list.
  */
 import { migrate } from '../../db/migrate.ts';
 await migrate();
 import { getDb } from '../../db/driver.ts';
 import { newId } from '../../lib/ids.ts';
 import type { ActorRef } from '../../services/records.ts';
-import { createRecord } from '../../services/records.ts';
+import { createRecord, updateRecord } from '../../services/records.ts';
 import { listActivities } from '../../services/activity.ts';
-import { getCalendar, inviteToMeeting, listInvitees, listMyInvites, respondToInvite, scheduleMeeting, __testing } from '../../services/calendar.ts';
+import { getCalendar, getCalendarEvent, inviteToMeeting, listInvitees, listMyInvites, respondToInvite, scheduleMeeting, __testing } from '../../services/calendar.ts';
 import { registerUser } from '../../services/auth.ts';
 
 let pass = 0;
@@ -165,6 +168,96 @@ console.log('\n=== meetings never leak across tenants ===');
  T("another tenant's meeting never shows",
  agenda.meetings.every((m) => m.subject !== 'Foreign meeting'),
  agenda.meetings.map((m) => m.subject));
+}
+
+console.log('\n=== calendar events notify everybody except the creator ===');
+{
+ // A fresh tenant keeps the counts exact: one creator plus one colleague.
+ const notifOrg = await mkOrg('CalNotify', 'cal-notify@corp.io');
+ const colleague = await mkOrg('CalColleague', 'cal-colleague@corp.io');
+ await db.query(
+ `INSERT INTO organization_members (id, organization_id, user_id, role, joined_at, created_at, updated_at)
+  VALUES ($1,$2,$3,'manager',now(),now(),now())`,
+ [newId(), notifOrg.organizationId, colleague.userId],
+ );
+ const countFor = async (userId: string, type: string): Promise<number> => {
+ const r = await db.query<{ n: number }>(
+ `SELECT count(*)::int AS n FROM notifications
+  WHERE organization_id = $1 AND user_id = $2 AND type = $3`,
+ [notifOrg.organizationId, userId, type],
+ );
+ return r.rows[0]!.n;
+ };
+
+ const notifContact = await createRecord(notifOrg, 'contacts', {
+  first_name: 'Notif', last_name: 'Target', email: 'notif.target@corp.io',
+ });
+ const meeting = await scheduleMeeting(notifOrg, {
+  entityType: 'contact', entityId: String(notifContact.record.id),
+  occurredAt: at(DAY, '13:00'), subject: 'Notify the team',
+ });
+
+ T('the creator is not notified of their own meeting',
+  await countFor(notifOrg.userId, 'calendar_meeting') === 0);
+ T('every other member is notified of the meeting',
+  await countFor(colleague.userId, 'calendar_meeting') === 1);
+
+ const note = await db.query<{ title: string; link: string | null; entity_type: string | null; entity_id: string | null }>(
+  `SELECT title, link, entity_type, entity_id FROM notifications
+  WHERE organization_id = $1 AND user_id = $2 AND type = 'calendar_meeting'`,
+  [notifOrg.organizationId, colleague.userId],
+ );
+ T('the meeting notification points at the meeting',
+  note.rows[0]?.entity_type === 'meeting' && note.rows[0]?.entity_id === meeting.id, note.rows[0]);
+ T('the meeting notification links to the calendar',
+  note.rows[0]?.link === '/calendar', note.rows[0]);
+ T('the meeting notification names the meeting',
+  String(note.rows[0]?.title ?? '').includes('Notify the team'), note.rows[0]?.title);
+
+ const scheduled = await createRecord(notifOrg, 'tasks', {
+  title: 'Calendar task', due_date: `${DAY}T17:00:00Z`,
+ });
+ T('a dated task notifies the rest of the workspace',
+  await countFor(colleague.userId, 'calendar_task') === 1);
+ T('the creator is not notified of their own task',
+  await countFor(notifOrg.userId, 'calendar_task') === 0);
+
+ await createRecord(notifOrg, 'tasks', { title: 'Backlog task' });
+ T('an undated task is not announced',
+  await countFor(colleague.userId, 'calendar_task') === 1);
+
+ const later = await createRecord(notifOrg, 'tasks', { title: 'Later dated task' });
+ await updateRecord(notifOrg, 'tasks', String(later.record.id), { due_date: `${DAY}T18:00:00Z` });
+ T('a task that gains a due date is announced then',
+  await countFor(colleague.userId, 'calendar_task') === 2);
+
+ console.log('\n=== one event window backs both the calendar and notifications ===');
+ {
+  const meetingDetail = await getCalendarEvent(notifOrg, 'meeting', meeting.id);
+  T('the window reads a meeting',
+   meetingDetail.kind === 'meeting' && meetingDetail.title === 'Notify the team', meetingDetail);
+  T('the meeting window names the scheduler',
+   meetingDetail.creatorName === 'CalNotify', meetingDetail.creatorName);
+  T('the meeting window carries the attached record',
+   meetingDetail.entityType === 'contact' && meetingDetail.entityId === String(notifContact.record.id),
+   meetingDetail);
+
+  const taskDetail = await getCalendarEvent(notifOrg, 'task', String(scheduled.record.id));
+  T('the window reads a task',
+   taskDetail.kind === 'task' && taskDetail.title === 'Calendar task', taskDetail);
+  T('the task window carries its due date and status',
+   taskDetail.when !== null && taskDetail.status === 'todo', taskDetail);
+
+  const badKind = await attempt(() => getCalendarEvent(notifOrg, 'note', meeting.id));
+  T('an unknown event kind 404s', !badKind.ok, badKind);
+
+  const badId = await attempt(() => getCalendarEvent(notifOrg, 'meeting', newId()));
+  T('an unknown event id 404s', !badId.ok, badId);
+
+  const crossTenant = await attempt(() =>
+   getCalendarEvent(globex, 'task', String(scheduled.record.id)));
+  T("another tenant's event never opens", !crossTenant.ok, crossTenant);
+ }
 }
 
 console.log('\n=== invitations ===');

@@ -7,18 +7,31 @@
  * `npm run worker`
  *
  * Handlers are registered here at the composition root, never inside the queue
- * module: the queue is transport, this file decides what runs. No production
- * handlers are registered yet (the first candidates are the export runner and
- * notification digests), so a production worker idles. That is deliberate: an
- * idle worker that is tested beats a busy one wired to the wrong workload.
+ * module: the queue is transport, this file decides what runs.
+ *
+ * Two things run in this process. The queue worker executes jobs -- today only
+ * `event_due_reminder`, which sends the two advance notices every meeting and
+ * dated task earns. Beside it, the reminder sweep is the clock that notices
+ * those jobs have come due and hands them over; it is separate from the
+ * dispatch loop because finding work and running work are different jobs, and
+ * a slow handler should not delay the search for the next one.
  */
 import { initDriver } from './repositories/base.ts';
 import { migrate, migrationStatus } from './db/migrate.ts';
 import { logger } from './lib/logger.ts';
-import { startWorker, stopWorker } from './services/queue.ts';
+import { registerHandler, startWorker, stopWorker } from './services/queue.ts';
+import {
+ deliverDueReminder,
+ startReminderSweep,
+ stopReminderSweep,
+ REMINDER_JOB_TYPE,
+} from './services/reminders.ts';
 
 const WORKER_ID = `worker-${process.pid}`;
 const INTERVAL_MS = Number(process.env.WORKER_INTERVAL_MS ?? 5_000);
+const SWEEP_INTERVAL_MS = Number(process.env.REMINDER_SWEEP_INTERVAL_MS ?? 30_000);
+
+registerHandler(REMINDER_JOB_TYPE, deliverDueReminder);
 
 async function main(): Promise<void> {
  await initDriver();
@@ -30,9 +43,11 @@ async function main(): Promise<void> {
  }
 
  startWorker(WORKER_ID, INTERVAL_MS);
+ startReminderSweep(SWEEP_INTERVAL_MS);
 
  const shutdown = (signal: string): void => {
  logger.info({ signal }, 'worker shutdown requested');
+ stopReminderSweep();
  stopWorker();
  process.exit(0);
  };
