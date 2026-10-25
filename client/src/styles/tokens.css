@@ -65,6 +65,26 @@
   --radius-lg: 14px;
   --radius-full: 999px;
 
+  /* ── claymorphism ──────────────────────────────────────────────────────
+     Inflated, pillowy surfaces with a double shadow: a light highlight on
+     the top-left and a soft shadow on the bottom-right. Every container,
+     button and input below uses these so the whole app reads as clay. */
+  --clay-radius: 28px;
+  --clay-radius-sm: 18px;
+  --clay-radius-md: 22px;
+
+  /* Light clay shadows: soft highlight top-left, gentle shadow bottom-right.
+     Colours are translucent versions of the surface itself so the shadow
+     assimilates into the background instead of looking pasted on. */
+  --clay-shadow-light: -6px -6px 12px rgba(255, 255, 255, 0.55);
+  --clay-shadow-dark: 6px 6px 12px rgba(199, 207, 221, 0.35);
+  --clay-shadow: var(--clay-shadow-dark), var(--clay-shadow-light);
+  --clay-shadow-inset: inset 3px 3px 6px rgba(199, 207, 221, 0.35),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.55);
+  --clay-bg: #eef0f5;
+  --clay-surface: #f5f7fb;
+  --clay-border: #d9dee8;
+
   /* ── layout ───────────────────────────────────────────────────────────── */
   --content-width: 1200px;
   --reading-width: 72ch;
@@ -204,6 +224,16 @@
   --shadow-md: 0 4px 12px rgb(0 0 0 / 50%), 0 2px 4px rgb(0 0 0 / 30%);
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%), 0 4px 8px rgb(0 0 0 / 35%);
 
+  /* Dark clay: subtle highlight top-left, gentle shadow bottom-right.
+     Colours are translucent so they assimilate into the dark surface. */
+  --clay-shadow-light: -6px -6px 12px rgba(42, 50, 74, 0.35);
+  --clay-shadow-dark: 6px 6px 12px rgba(0, 0, 0, 0.30);
+  --clay-shadow-inset: inset 3px 3px 6px rgba(0, 0, 0, 0.30),
+    inset -3px -3px 6px rgba(42, 50, 74, 0.35);
+  --clay-bg: #14192a;
+  --clay-surface: #1c2338;
+  --clay-border: #2d3650;
+
   --chart-1: #818cf8;
   --chart-2: #22d3ee;
   --chart-3: #f0abfc;
@@ -268,6 +298,16 @@
     --shadow-md: 0 4px 12px rgb(0 0 0 / 50%), 0 2px 4px rgb(0 0 0 / 30%);
     --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%), 0 4px 8px rgb(0 0 0 / 35%);
 
+  /* Dark clay: subtle highlight top-left, gentle shadow bottom-right.
+     Colours are translucent so they assimilate into the dark surface. */
+  --clay-shadow-light: -6px -6px 12px rgba(42, 50, 74, 0.35);
+  --clay-shadow-dark: 6px 6px 12px rgba(0, 0, 0, 0.30);
+  --clay-shadow-inset: inset 3px 3px 6px rgba(0, 0, 0, 0.30),
+    inset -3px -3px 6px rgba(42, 50, 74, 0.35);
+  --clay-bg: #14192a;
+  --clay-surface: #1c2338;
+  --clay-border: #2d3650;
+
     --chart-1: #818cf8;
     --chart-2: #22d3ee;
     --chart-3: #f0abfc;
@@ -312,7 +352,7 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--clay-bg);
   color: var(--text);
   font-family: var(--font-sans);
   font-size: var(--text-base);

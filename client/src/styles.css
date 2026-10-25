@@ -1,19 +1,17 @@
 /* ============================================================================
-   BigCRM component styles
+   BigCRM component styles — claymorphism
 
-   Every value here is a token from `tokens.css`, which `main.tsx` imports first
-   so the token layer is always defined before these rules are parsed. Nothing in
-   this file hard-codes a colour, so a theme change repaints the whole
-   application without touching a single component.
+   Every surface is inflated and pillowy: large border-radius, a double shadow
+   (light highlight top-left, soft shadow bottom-right) and no hard borders.
+   Inputs are embossed (inset shadow), buttons press inward on click, and
+   modals sit like clay slabs on the scrim.
 
-   Selectors are kept stable: components depend on these class names, and
-   renaming them would be churn with no visual benefit.
+   All values come from `tokens.css`; nothing here hard-codes a colour, so the
+   clay works in both light and dark themes.
    ========================================================================== */
 
 /* ── utilities ───────────────────────────────────────────────────────────── */
 
-/* Available to assistive tech, invisible on screen. Used for labels that must
-   not be read twice (a visible label plus a select's own name). */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -27,7 +25,6 @@
   border: 0;
 }
 
-/* Skip link: first tab stop, visible only when focused. */
 .skip-link {
   position: absolute;
   left: var(--space-4);
@@ -36,7 +33,7 @@
   padding: var(--space-2) var(--space-4);
   background: var(--primary);
   color: var(--primary-fg);
-  border-radius: var(--radius-sm);
+  border-radius: var(--clay-radius-sm);
   font-weight: var(--weight-semibold);
   text-decoration: none;
   transition: top var(--dur-fast) var(--ease-out);
@@ -53,19 +50,22 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
+  background: var(--clay-bg);
 }
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  background: var(--clay-surface);
+  border: none;
+  border-radius: var(--clay-radius);
+  box-shadow: var(--clay-shadow-inset), var(--clay-shadow);
   padding: var(--space-8);
+  overflow: hidden;
 }
 
 .auth-page .card {
   width: 100%;
   max-width: 420px;
+  box-shadow: var(--clay-shadow-inset), var(--clay-shadow);
 }
 
 .card h1 {
@@ -90,7 +90,7 @@
 .card-footer {
   margin: var(--space-6) 0 0;
   padding-top: var(--space-4);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--clay-border);
   font-size: var(--text-sm);
   color: var(--text-secondary);
   text-align: center;
@@ -116,27 +116,27 @@
   width: 100%;
   min-height: var(--control-height);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  background: var(--surface);
+  border: none;
+  border-radius: var(--clay-radius-sm);
+  background: var(--clay-surface);
   color: var(--text);
   font: inherit;
-  transition: border-color var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur-fast) var(--ease-out);
+  /* Embossed look: inset shadow makes the field read as pressed into clay. */
+  box-shadow: var(--clay-shadow-inset);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .field input:hover:not(:disabled),
 .field select:hover:not(:disabled),
 .field textarea:hover:not(:disabled) {
-  border-color: var(--muted);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 1px var(--muted);
 }
 
 .field input:focus-visible,
 .field select:focus-visible,
 .field textarea:focus-visible {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 3px var(--primary-subtle);
 }
 
 .field input:disabled,
@@ -144,12 +144,13 @@
 .field textarea:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  background: var(--surface-sunken);
+  background: var(--clay-bg);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .field input[aria-invalid='true'],
 .field select[aria-invalid='true'] {
-  border-color: var(--danger-fg);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 3px var(--danger-bg);
 }
 
 .field-error {
@@ -160,16 +161,19 @@
 
 .alert {
   padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius);
-  border: 1px solid transparent;
+  border-radius: var(--clay-radius-sm);
+  border: none;
   margin-bottom: var(--space-4);
   font-size: var(--text-base);
+  background: var(--clay-surface);
+  box-shadow: var(--clay-shadow-inset);
+  overflow: hidden;
 }
 
 .alert-error {
   background: var(--danger-bg);
   color: var(--danger-fg);
-  border-color: var(--danger-border);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 1px var(--danger-border);
 }
 
 /* ── buttons ─────────────────────────────────────────────────────────────── */
@@ -182,25 +186,30 @@
   width: 100%;
   min-height: var(--control-height);
   padding: var(--space-2) var(--space-4);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
+  border: none;
+  border-radius: var(--clay-radius-sm);
   font: inherit;
   font-weight: var(--weight-semibold);
   cursor: pointer;
-  /* Only transform/opacity/colour animate — never layout properties. */
+  /* Puffy clay button: inset shadow makes it read as raised off the surface. */
+  box-shadow: var(--clay-shadow-inset);
   transition: background-color var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .btn:active:not(:disabled) {
-  transform: translateY(1px);
+  /* Pressed: the inset shadow flattens so the button sinks into the clay. */
+  transform: scale(0.96) translateY(0);
+  box-shadow: inset 2px 2px 4px rgba(199, 207, 221, 0.35),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.55);
 }
 
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .btn-primary {
@@ -210,6 +219,7 @@
 
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 4px var(--primary-subtle);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -218,14 +228,23 @@
 
 .btn-secondary {
   width: auto;
-  background: var(--surface);
-  border-color: var(--border-strong);
+  background: var(--clay-surface);
   color: var(--text);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--surface-hover);
-  border-color: var(--muted);
+  background: var(--clay-bg);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 3px rgb(16 24 40 / 8%);
+}
+
+.btn-danger {
+  background: var(--danger-strong);
+  color: var(--danger-strong-fg);
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 4px var(--danger-bg);
 }
 
 /* ── app shell ───────────────────────────────────────────────────────────── */
@@ -234,6 +253,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: var(--clay-bg);
 }
 
 .app-header {
@@ -247,7 +267,9 @@
   min-height: var(--header-height);
   padding: var(--space-3) var(--space-6);
   background: var(--topbar-bg);
-  border-bottom: 1px solid var(--border);
+  border: none;
+  border-bottom: 1px solid var(--clay-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .app-header-brand {
@@ -260,14 +282,15 @@
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
-  border-radius: var(--radius);
+  border-radius: var(--clay-radius-sm);
   background: var(--primary);
   color: var(--primary-fg);
   font-weight: var(--weight-bold);
   font-size: var(--text-md);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .brand-name {
@@ -319,17 +342,19 @@
   gap: var(--space-1);
   height: var(--control-height);
   padding: 0 var(--space-1) 0 var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  background: var(--surface);
+  border: none;
+  border-radius: var(--clay-radius-sm);
+  background: var(--clay-surface);
   color: var(--text-secondary);
-  transition: border-color var(--dur-fast) var(--ease-out),
-    background-color var(--dur-fast) var(--ease-out);
+  box-shadow: var(--clay-shadow-inset);
+  transition: background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+  overflow: hidden;
 }
 
 .theme-switcher:hover {
-  border-color: var(--muted);
-  background: var(--surface-hover);
+  background: var(--clay-bg);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 3px var(--primary-subtle);
 }
 
 .theme-switcher-glyph {
@@ -346,6 +371,7 @@
   font: inherit;
   font-size: var(--text-sm);
   cursor: pointer;
+  border-radius: var(--clay-radius-sm);
 }
 
 .theme-switcher-select:focus-visible {
@@ -354,9 +380,6 @@
   border-radius: var(--radius-sm);
 }
 
-/* Native dropdown options inherit the page text colour but not the page
-   background in every browser, so an explicit pair keeps the popup readable
-   in both themes even where `color-scheme` is ignored. */
 option {
   background-color: var(--surface);
   color: var(--text);
@@ -370,6 +393,7 @@ option {
   max-width: var(--content-width);
   margin: 0 auto;
   padding: var(--space-6);
+  background: var(--clay-bg);
 }
 
 .app-main h1 {
@@ -395,7 +419,6 @@ option {
   font-size: var(--text-2xl);
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-tight);
-  /* Tabular figures stop numbers jittering as they update. */
   font-variant-numeric: tabular-nums;
 }
 
@@ -427,31 +450,38 @@ a {
   gap: var(--space-1);
   padding: 0 var(--space-6);
   background: var(--sidebar-bg);
-  border-bottom: 1px solid var(--border);
+  border: none;
+  border-bottom: 1px solid var(--clay-border);
+  border-radius: 0 0 var(--clay-radius) var(--clay-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   overflow-x: auto;
   scrollbar-width: thin;
 }
 
 .app-nav a {
-  padding: var(--space-3) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
   color: var(--text-secondary);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: none;
+  border-radius: var(--clay-radius-sm);
   white-space: nowrap;
-  transition: color var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
+  transition: background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .app-nav a:hover {
   color: var(--text);
-  background: var(--surface-hover);
+  background: var(--clay-bg);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .app-nav a.active {
   color: var(--primary);
-  border-bottom-color: var(--primary);
+  background: var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 /* ── toolbars and data tables ────────────────────────────────────────────── */
@@ -469,27 +499,27 @@ a {
   min-width: 200px;
   min-height: var(--control-height);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  border: none;
+  border-radius: var(--clay-radius-sm);
   font: inherit;
-  background: var(--surface);
+  background: var(--clay-surface);
   color: var(--text);
-  transition: border-color var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur-fast) var(--ease-out);
+  box-shadow: var(--clay-shadow-inset);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .toolbar .search:focus-visible {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 3px var(--primary-subtle);
 }
 
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  border: none;
+  border-radius: var(--clay-radius);
+  background: var(--clay-surface);
+  box-shadow: var(--clay-shadow-inset), var(--clay-shadow);
+  overflow: hidden;
 }
 
 table.records {
@@ -502,7 +532,7 @@ table.records th,
 table.records td {
   padding: var(--space-3) var(--space-4);
   text-align: left;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--clay-border);
   white-space: nowrap;
 }
 
@@ -515,7 +545,7 @@ table.records th {
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
-  background: var(--surface-sunken);
+  background: var(--clay-bg);
 }
 
 table.records tbody tr:last-child td {
@@ -527,7 +557,7 @@ table.records tbody tr {
 }
 
 table.records tbody tr:hover {
-  background: var(--hover);
+  background: var(--clay-bg);
 }
 
 table.records td a {
@@ -570,7 +600,6 @@ table.records td a {
 .detail-grid dd {
   margin: var(--space-1) 0 0;
   font-size: var(--text-md);
-  /* Long customer and company names must wrap, not clip. */
   overflow-wrap: anywhere;
 }
 
@@ -591,19 +620,19 @@ table.records td a {
   width: 100%;
   min-height: var(--control-height);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  border: none;
+  border-radius: var(--clay-radius-sm);
   font: inherit;
-  background: var(--surface);
+  background: var(--clay-surface);
   color: var(--text);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .form-grid input:focus-visible,
 .form-grid select:focus-visible,
 .form-grid textarea:focus-visible {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 3px var(--primary-subtle);
 }
 
 .form-actions {
@@ -618,8 +647,6 @@ table.records td a {
 
 /* ── responsive ──────────────────────────────────────────────────────────── */
 
-/* Below the tablet breakpoint the header stacks and the user chip stops
-   competing with the brand for horizontal room. */
 @media (max-width: 640px) {
   .app-header {
     flex-wrap: wrap;
@@ -652,7 +679,6 @@ table.records td a {
     padding: var(--space-4);
   }
 
-  /* Sticky headers eat a lot of a short viewport; let them scroll away. */
   table.records th {
     position: static;
   }
@@ -664,9 +690,7 @@ table.records td a {
   }
 }
 
-/* ── shared UI primitives (components/ui.tsx) ──────────────────────────────
-   One class per pattern so pages compose instead of inventing inline styles.
-   Every value below is a token; dark theme and reduced motion inherit. */
+/* ── shared UI primitives (components/ui.tsx) ────────────────────────────── */
 
 .btn-sm {
   width: auto;
@@ -688,29 +712,27 @@ table.records td a {
   filter: brightness(0.92);
 }
 
-/* Row-level action clusters inside table cells. */
 .btn-group {
   display: inline-flex;
   gap: var(--space-2);
   flex-wrap: wrap;
 }
 
-/* Small status pill used in tables and lists. */
 .badge {
   display: inline-flex;
   align-items: center;
   min-width: 1.375rem;
   height: 1.375rem;
   padding: 0 var(--space-1);
-  border-radius: var(--radius-full);
-  background: var(--surface-hover);
+  border-radius: var(--clay-radius-sm);
+  background: var(--clay-bg);
   color: var(--text-secondary);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   vertical-align: baseline;
+  box-shadow: var(--clay-shadow-inset);
 }
 
-/* Inline filter/search forms inside a toolbar. */
 .form-row {
   display: flex;
   gap: var(--space-2);
@@ -718,7 +740,6 @@ table.records td a {
   flex-wrap: wrap;
 }
 
-/* KPI cards that are also links keep card text colours, not link purple. */
 .link-card {
   text-decoration: none;
   color: inherit;
@@ -727,13 +748,18 @@ table.records td a {
 }
 
 .link-card:hover {
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--clay-shadow);
   transform: translateY(-1px);
 }
 
-/* Titled card sections with one standard rhythm. */
 .card.section {
   margin: var(--space-6) 0;
+  background: var(--clay-surface);
+  border: none;
+  border-radius: var(--clay-radius);
+  box-shadow: var(--clay-shadow-inset), var(--clay-shadow);
+  padding: var(--space-6);
+  overflow: hidden;
 }
 
 .section-title {
@@ -755,15 +781,18 @@ table.records td a {
 }
 
 .empty-state {
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-8) var(--space-4);
   text-align: center;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-md);
-  background: var(--surface-sunken);
+  border: none;
+  border-radius: var(--clay-radius);
+  background: var(--clay-surface);
+  box-shadow: var(--clay-shadow-inset);
+  overflow: hidden;
 }
 
 .empty-state p {
   margin: 0;
+  color: var(--text-secondary);
 }
 
 .count-badge {
@@ -774,13 +803,14 @@ table.records td a {
   height: 1.375rem;
   margin-left: var(--space-2);
   padding: 0 var(--space-1);
-  border-radius: 999px;
+  border-radius: var(--clay-radius-sm);
   background: var(--primary);
   color: var(--primary-fg);
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
   vertical-align: baseline;
+  box-shadow: var(--clay-shadow-inset);
 }
 
 /* ── modal dialog ────────────────────────────────────────────────────────── */
@@ -792,19 +822,29 @@ table.records td a {
   display: grid;
   place-items: center;
   padding: var(--space-4);
-  background: var(--scrim);
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   animation: modal-fade var(--dur-base) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-scrim {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 
 .modal {
   width: 100%;
-  max-width: 26rem;
+  max-width: 28rem;
   padding: var(--space-6);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  animation: modal-rise var(--dur-base) var(--ease-out);
+  background: var(--clay-surface);
+  border: none;
+  border-radius: var(--clay-radius);
+  box-shadow: var(--clay-shadow-inset), var(--clay-shadow);
+  animation: modal-scale var(--dur-base) var(--ease-back) both;
+  overflow: hidden;
 }
 
 .modal h2 {
@@ -822,14 +862,14 @@ table.records td a {
   to { opacity: 1; }
 }
 
-@keyframes modal-rise {
+@keyframes modal-scale {
   from {
     opacity: 0;
-    transform: translateY(6px) scale(0.98);
+    transform: scale(0.9) translateY(10px);
   }
   to {
     opacity: 1;
-    transform: none;
+    transform: scale(1) translateY(0);
   }
 }
 
@@ -845,7 +885,7 @@ table.records td a {
   position: relative;
   margin: 0;
   padding: 0 0 var(--space-4) var(--space-5);
-  border-left: 2px solid var(--border-strong);
+  border-left: 2px solid var(--clay-border);
 }
 
 .timeline-item:last-child {
@@ -857,10 +897,11 @@ table.records td a {
   position: absolute;
   top: 4px;
   left: -5px;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--primary);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .timeline-head {
@@ -918,18 +959,17 @@ table.records td a {
   margin-bottom: var(--space-1);
 }
 
-/* Audit logs filter input needs to grow in a fixed toolbar. */
 .audit-filter {
   flex: 1 1 200px;
 }
 
-/* Note under search results. */
 .search-results-note {
   margin-top: var(--space-4);
   color: var(--text-secondary);
 }
 
 /* ── calendar ────────────────────────────────────────────────────────────── */
+
 table.calendar-grid {
   width: 100%;
   border-collapse: collapse;
@@ -938,7 +978,7 @@ table.calendar-grid {
 
 table.calendar-grid th,
 table.calendar-grid td {
-  border-bottom: 1px solid var(--border);
+  border: none;
   vertical-align: top;
 }
 
@@ -950,7 +990,7 @@ table.calendar-grid th {
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
-  background: var(--surface-sunken);
+  background: var(--clay-bg);
 }
 
 table.calendar-grid tbody tr:last-child td {
@@ -968,31 +1008,34 @@ table.calendar-grid tbody tr:last-child td {
 
 .cal-selected {
   background: var(--primary-subtle);
+  border-radius: var(--clay-radius-sm);
 }
 
 .cal-date {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.75rem;
-  min-height: 1.75rem;
+  min-width: 2rem;
+  min-height: 2rem;
   padding: 0 var(--space-1);
-  border: 1px solid transparent;
-  border-radius: 50%;
+  border: none;
+  border-radius: var(--clay-radius-sm);
   background: none;
   color: inherit;
   font: inherit;
   font-weight: var(--weight-semibold);
   cursor: pointer;
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .cal-date:hover {
-  border-color: var(--border-strong);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 1px var(--clay-border);
 }
 
 .cal-selected .cal-date {
   background: var(--primary);
   color: var(--primary-fg);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .cal-chips {
@@ -1007,13 +1050,12 @@ table.calendar-grid tbody tr:last-child td {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 1px var(--space-2);
-  border-radius: var(--radius);
+  padding: 2px var(--space-2);
+  border-radius: var(--clay-radius-sm);
   font-size: var(--text-xs);
+  box-shadow: var(--clay-shadow-inset);
 }
 
-/* A chip is the calendar marker and opens the event window, so it is a real
-   button -- keyboard reachable, and visibly interactive on hover. */
 button.cal-chip {
   width: 100%;
   border: 0;
@@ -1024,6 +1066,7 @@ button.cal-chip {
 
 button.cal-chip:hover {
   filter: brightness(0.95);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 1px var(--clay-border);
 }
 
 .cal-chip-meeting {
@@ -1059,6 +1102,7 @@ button.cal-chip:hover {
 }
 
 /* ── kanban board ────────────────────────────────────────────────────────── */
+
 .board {
   display: grid;
   grid-auto-flow: column;
@@ -1069,13 +1113,14 @@ button.cal-chip:hover {
 }
 
 .board-column {
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  background: var(--clay-surface);
+  border: none;
+  border-radius: var(--clay-radius);
   padding: var(--space-4);
   min-height: 12rem;
-  transition: border-color var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur-fast) var(--ease-out);
+  box-shadow: var(--clay-shadow-inset), var(--clay-shadow);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+  overflow: hidden;
 }
 
 .board-column > h2 {
@@ -1084,8 +1129,7 @@ button.cal-chip:hover {
 }
 
 .board-drop {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 6px var(--primary-subtle);
 }
 
 .board-cards {
@@ -1099,6 +1143,12 @@ button.cal-chip:hover {
 
 .board-card {
   padding: var(--space-3) var(--space-4);
+  background: var(--clay-surface);
+  border: none;
+  border-radius: var(--clay-radius-sm);
+  box-shadow: var(--clay-shadow-inset);
+  transition: box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
 .board-card[draggable='true'] {
@@ -1113,6 +1163,11 @@ button.cal-chip:hover {
   margin: var(--space-1) 0 0;
 }
 
+.board-card:hover {
+  box-shadow: var(--clay-shadow);
+  transform: translateY(-1px);
+}
+
 .board-move {
   display: block;
   margin-top: var(--space-2);
@@ -1122,11 +1177,12 @@ button.cal-chip:hover {
   max-width: 100%;
   margin-top: var(--space-1);
   min-height: var(--control-height);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  background: var(--surface);
+  border: none;
+  border-radius: var(--clay-radius-sm);
+  background: var(--clay-surface);
   color: var(--text);
   font: inherit;
+  box-shadow: var(--clay-shadow-inset);
 }
 
 /* ── project pipeline stepper ────────────────────────────────────────────── */
@@ -1143,25 +1199,27 @@ button.cal-chip:hover {
 .step {
   flex: 1 1 8rem;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-sunken);
+  border: none;
+  border-radius: var(--clay-radius-sm);
+  background: var(--clay-bg);
   text-align: center;
   font-size: var(--text-sm);
   color: var(--text-secondary);
+  box-shadow: var(--clay-shadow-inset);
+  overflow: hidden;
 }
 
 .step-done {
-  border-color: var(--success-border);
   background: var(--success-bg);
   color: var(--success-fg);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 1px var(--success-border);
 }
 
 .step-current {
-  border-color: var(--primary);
   background: var(--primary-subtle);
   color: var(--primary-subtle-fg);
   font-weight: var(--weight-semibold);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 1px var(--primary);
 }
 
 .step-button {
@@ -1181,18 +1239,20 @@ button.cal-chip:hover {
 }
 
 /* ── mobile navigation drawer ────────────────────────────────────────────── */
+
 .nav-toggle {
   display: none;
   align-items: center;
   justify-content: center;
   width: var(--control-height);
   min-height: var(--control-height);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  background: var(--surface);
+  border: none;
+  border-radius: var(--clay-radius-sm);
+  background: var(--clay-surface);
   color: var(--text);
   font-size: var(--text-lg);
   cursor: pointer;
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .nav-scrim {
@@ -1204,8 +1264,6 @@ button.cal-chip:hover {
     display: inline-flex;
   }
 
-  /* The sticky top bar becomes an off-canvas drawer. Above this breakpoint
-     the data-open attribute is inert and rendering is unchanged. */
   .app-nav {
     position: fixed;
     top: 0;
@@ -1220,23 +1278,25 @@ button.cal-chip:hover {
     overflow-y: auto;
     transform: translateX(-105%);
     transition: transform var(--dur-base) var(--ease-out);
+    background: var(--sidebar-bg);
+    box-shadow: var(--clay-shadow);
+    border-radius: 0 var(--clay-radius) var(--clay-radius) 0;
   }
 
   .app-nav[data-open='true'] {
     transform: none;
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--clay-shadow);
   }
 
   .app-nav a {
     border-bottom: none;
-    border-left: 3px solid transparent;
-    border-radius: var(--radius);
+    border-radius: var(--clay-radius-sm);
     padding: var(--space-3) var(--space-3);
   }
 
   .app-nav a.active {
-    border-left-color: var(--primary);
     background: var(--primary-subtle);
+    box-shadow: var(--clay-shadow-inset);
   }
 
   .nav-scrim[data-open='true'] {
@@ -1250,34 +1310,29 @@ button.cal-chip:hover {
 
 /* ── refinements: hover states, elevations, polish ───────────────────────── */
 
-/* Card with a subtle lift on hover. */
 .card {
   transition: transform var(--dur-base) var(--ease-out),
-    box-shadow var(--dur-base) var(--ease-out),
-    border-color var(--dur-base) var(--ease-out);
+    box-shadow var(--dur-base) var(--ease-out);
 }
 
 .card:hover {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--clay-shadow);
 }
 
 .card.section:hover {
   transform: none;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--clay-shadow);
 }
 
-/* Table rows: subtle zebra is not needed; a clean hover state is enough. */
 table.records tbody tr:hover td {
-  border-color: var(--border-strong);
+  border-color: var(--clay-border);
 }
 
-/* Header cells stick with a subtle separator. */
 table.records th {
-  border-bottom: 2px solid var(--border-strong);
+  border-bottom: 2px solid var(--clay-border);
 }
 
-/* Form fields: stronger focus ring, softer disabled. */
 .field input:focus-visible,
 .field select:focus-visible,
 .field textarea:focus-visible,
@@ -1286,46 +1341,37 @@ table.records th {
 .form-grid textarea:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-color: var(--focus-ring);
-  box-shadow: 0 0 0 3px var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 4px var(--primary-subtle);
 }
 
-/* Disabled inputs read as inert, not broken. */
 .field input:disabled,
 .field select:disabled,
 .field textarea:disabled,
 .form-grid input:disabled,
 .form-grid select:disabled,
 .form-grid textarea:disabled {
-  background: var(--surface-sunken);
+  background: var(--clay-bg);
   color: var(--muted);
-  border-color: var(--border);
+  box-shadow: var(--clay-shadow-inset);
 }
 
-/* Buttons: primary gets a subtle glow on hover. */
 .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 0 0 3px var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 4px var(--primary-subtle);
 }
 
-/* Secondary buttons get a filled hover in dark mode too. */
 .btn-secondary:hover:not(:disabled) {
-  background: var(--surface-hover);
-  border-color: var(--border-strong);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 3px var(--primary-subtle);
 }
 
-/* Empty state: more breathing room, softer border. */
 .empty-state {
   padding: var(--space-8) var(--space-4);
-  border-style: dashed;
-  border-color: var(--border);
-  background: var(--surface-sunken);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .empty-state p {
   color: var(--text-secondary);
 }
 
-/* Section headers: tighter, more authoritative. */
 .app-main h1 {
   margin: 0 0 var(--space-1);
   font-size: var(--text-2xl);
@@ -1341,11 +1387,6 @@ table.records th {
   color: var(--text);
 }
 
-.muted {
-  color: var(--text-secondary);
-}
-
-/* Links: clearer visited state in both themes. */
 a {
   color: var(--primary);
   text-underline-offset: 2px;
@@ -1356,10 +1397,6 @@ a:hover {
   color: var(--primary-hover);
 }
 
-/* A title that opens the event window rather than navigating: it looks like a
-   link because it is one in every way that matters to the reader, but it
-   behaves as a button so the same window opens from the notification list and
-   from the calendar. */
 .link-button {
   display: inline;
   padding: 0;
@@ -1378,82 +1415,51 @@ a:hover {
   text-decoration: none;
 }
 
-/* Timeline: the connector line is stronger in dark mode. */
 .timeline-item {
-  border-left-color: var(--border-strong);
+  border-left-color: var(--clay-border);
 }
 
 .timeline-item::before {
   background: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset);
 }
 
-/* Stepper: done steps read as completed, current as active. */
 .step-done {
-  border-color: var(--success-border);
-  background: var(--success-bg);
-  color: var(--success-fg);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 1px var(--success-border);
 }
 
 .step-current {
-  border-color: var(--primary);
-  background: var(--primary-subtle);
-  color: var(--primary-subtle-fg);
-}
-
-/* Board columns: softer background, clearer drag feedback. */
-.board-column {
-  transition: background-color var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 1px var(--primary);
 }
 
 .board-drop {
-  border-color: var(--primary);
-  background: var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 6px var(--primary-subtle);
 }
 
-/* Kanban cards: subtle hover lift. */
-.board-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  transition: border-color var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur-fast) var(--ease-out);
-}
-
-.board-card:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-sm);
-}
-
-/* Modal scrim: deeper in dark mode. */
 .modal-scrim {
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
 }
 
-/* Confirm dialog: primary action stands out. */
 .modal-actions .btn-primary {
   min-width: 90px;
 }
 
-/* KPI cards: stat value gets tabular figures, link cards lift. */
 .card.stat {
   transition: transform var(--dur-base) var(--ease-out),
     box-shadow var(--dur-base) var(--ease-out);
+  overflow: hidden;
 }
 
 .card.stat:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--clay-shadow);
 }
 
-/* Skip link: already themed via vars, just ensure focus ring. */
 .skip-link:focus {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
-/* Theme switcher: native select options inherit surface/text. */
 .theme-switcher-select option {
   background-color: var(--surface);
   color: var(--text);
@@ -1473,7 +1479,6 @@ a:hover {
 
 /* ── page route transitions ─────────────────────────────────────────────── */
 
-/* The route wrapper fades and slides in so navigation never feels like a hard cut. */
 .route-page {
   animation: route-fade var(--dur-base) var(--ease-out);
   animation-fill-mode: both;
@@ -1492,7 +1497,6 @@ a:hover {
 
 /* ── entrance animations ────────────────────────────────────────────────── */
 
-/* Fade up: used for cards, sections, modals — anything that enters the DOM. */
 @keyframes fade-up {
   from {
     opacity: 0;
@@ -1504,7 +1508,6 @@ a:hover {
   }
 }
 
-/* Fade in: used for alerts, banners, inline messages. */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -1516,7 +1519,6 @@ a:hover {
   }
 }
 
-/* Scale in: used for buttons, chips, small interactive elements. */
 @keyframes scale-in {
   from {
     opacity: 0;
@@ -1528,7 +1530,6 @@ a:hover {
   }
 }
 
-/* Slide in from the left: used for nav drawers, side panels. */
 @keyframes slide-in-left {
   from {
     opacity: 0;
@@ -1540,24 +1541,14 @@ a:hover {
   }
 }
 
-/* Pulse: used for empty states, subtle attention. */
 @keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.55;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 
-/* Shimmer: used for skeleton loaders. */
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* ── entrance utility classes ───────────────────────────────────────────── */
@@ -1582,7 +1573,6 @@ a:hover {
   animation: fade-in var(--dur-base) var(--ease-out) both;
 }
 
-/* Staggered entrance: apply .stagger to a parent, children animate in sequence. */
 .stagger > * {
   opacity: 0;
   animation: fade-up var(--dur-base) var(--ease-out) both;
@@ -1599,60 +1589,66 @@ a:hover {
 
 /* ── hover micro-interactions ───────────────────────────────────────────── */
 
-/* Cards: fluid lift + glow on hover. */
-.card {
-  transition: transform var(--dur-base) var(--ease-out),
-    box-shadow var(--dur-base) var(--ease-out),
-    border-color var(--dur-base) var(--ease-out);
-}
-
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--border-strong);
+  box-shadow: var(--clay-shadow);
+  border-color: var(--clay-border);
 }
 
 .card:active {
   transform: translateY(0);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--clay-shadow-inset);
 }
 
-/* KPI cards: stronger lift. */
 .card.stat:hover {
   transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--clay-shadow);
 }
 
-/* Section cards: softer hover. */
-.card.section:hover {
-  transform: none;
-  box-shadow: var(--shadow-md);
-}
-
-/* Buttons: press + glow micro-interaction. */
 .btn {
   transition: transform var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out),
-    background-color var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
+    background-color var(--dur-fast) var(--ease-out);
 }
 
 .btn:active:not(:disabled) {
   transform: scale(0.97) translateY(0);
-  box-shadow: 0 0 0 3px var(--primary-subtle);
+  box-shadow: inset 2px 2px 4px rgba(199, 207, 221, 0.35),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.55);
 }
 
+/* Buttons: proper claymorphism focus ring instead of the browser default
+   outline (which can bleed through the modal scrim and look like a
+   disconnected blur box around a calendar chip). */
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--clay-shadow-inset), 0 0 0 3px var(--primary-subtle);
+}
+
+/* Calendar chips: click to open the event window, so they hand focus off to
+   the modal's Close button. No stray outline behind the scrim. */
+button.cal-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--clay-shadow-inset), 0 0 0 2px var(--clay-border);
+}
+
+/* Modal scrim and modal itself must never show a focus outline. */
+.modal-scrim,
+.modal {
+  outline: none;
+}
+
+
 .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 0 0 4px var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 4px var(--primary-subtle);
   transform: translateY(-1px);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  box-shadow: 0 0 0 3px rgb(16 24 40 / 8%);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 3px rgb(16 24 40 / 8%);
   transform: translateY(-1px);
 }
 
-/* Form fields: glow on focus, softer disabled. */
 .field input:focus-visible,
 .field select:focus-visible,
 .field textarea:focus-visible,
@@ -1661,23 +1657,10 @@ a:hover {
 .form-grid textarea:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-color: var(--focus-ring);
-  box-shadow: 0 0 0 4px var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 4px var(--primary-subtle);
   transform: translateY(-1px);
 }
 
-.field input:disabled,
-.field select:disabled,
-.field textarea:disabled,
-.form-grid input:disabled,
-.form-grid select:disabled,
-.form-grid textarea:disabled {
-  background: var(--surface-sunken);
-  color: var(--muted);
-  border-color: var(--border);
-}
-
-/* Links: fluid color + underline shift. */
 a {
   transition: color var(--dur-fast) var(--ease-out),
     text-underline-offset var(--dur-fast) var(--ease-out);
@@ -1687,10 +1670,8 @@ a:hover {
   text-underline-offset: 4px;
 }
 
-/* Nav links: active state with slide underline. */
 .app-nav a {
   transition: color var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out),
     background-color var(--dur-fast) var(--ease-out),
     transform var(--dur-fast) var(--ease-out);
 }
@@ -1703,7 +1684,6 @@ a:hover {
   transform: translateY(-1px);
 }
 
-/* Table rows: fluid highlight + slide. */
 table.records tbody tr {
   transition: background-color var(--dur-fast) var(--ease-out),
     transform var(--dur-fast) var(--ease-out);
@@ -1711,69 +1691,47 @@ table.records tbody tr {
 
 table.records tbody tr:hover {
   transform: translateX(4px);
-  background: var(--hover);
+  background: var(--clay-bg);
 }
 
-/* Table rows in kanban: lift on hover. */
 .board-card {
   transition: transform var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .board-card:hover {
   transform: translateY(-2px);
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--clay-shadow);
 }
 
-/* Dragging state: subtle rotation + lift. */
 .board-card[draggable='true']:active {
   transform: rotate(2deg) translateY(-2px);
   cursor: grabbing;
 }
 
-/* Board columns: gentle highlight on drag-over. */
 .board-drop {
   animation: board-drop-pulse var(--dur-base) var(--ease-out) infinite alternate;
 }
 
 @keyframes board-drop-pulse {
   from {
-    box-shadow: 0 0 0 0 var(--primary-subtle);
+    box-shadow: var(--clay-shadow-inset), 0 0 0 0 var(--primary-subtle);
   }
   to {
-    box-shadow: 0 0 0 6px var(--primary-subtle);
+    box-shadow: var(--clay-shadow-inset), 0 0 0 6px var(--primary-subtle);
   }
 }
 
-/* Stepper: current step pulses gently. */
 .step-current {
   animation: step-pulse var(--dur-slow) var(--ease-in-out) infinite alternate;
 }
 
 @keyframes step-pulse {
   from {
-    box-shadow: 0 0 0 0 var(--primary-subtle);
+    box-shadow: var(--clay-shadow-inset), 0 0 0 0 var(--primary-subtle);
   }
   to {
-    box-shadow: 0 0 0 5px var(--primary-subtle);
-  }
-}
-
-/* Modal: scale-in + fade. */
-.modal {
-  animation: modal-scale var(--dur-base) var(--ease-back) both;
-}
-
-@keyframes modal-scale {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
+    box-shadow: var(--clay-shadow-inset), 0 0 0 5px var(--primary-subtle);
   }
 }
 
@@ -1787,37 +1745,30 @@ table.records tbody tr:hover {
   to { opacity: 1; }
 }
 
-/* Alerts: slide in from left. */
 .alert {
   animation: fade-in var(--dur-base) var(--ease-out) both;
 }
 
-/* Empty state: gentle pulse. */
 .empty-state {
   animation: fade-up var(--dur-base) var(--ease-out) both;
-  border-style: dashed;
-  border-color: var(--border);
-  background: var(--surface-sunken);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .empty-state p {
   color: var(--text-secondary);
 }
 
-/* Count badge: pop-in. */
 .count-badge {
   animation: scale-in var(--dur-base) var(--ease-back) both;
 }
 
-/* Theme switcher: smooth color transition. */
 .theme-switcher {
-  transition: border-color var(--dur-fast) var(--ease-out),
-    background-color var(--dur-fast) var(--ease-out),
+  transition: background-color var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .theme-switcher:hover {
-  box-shadow: 0 0 0 3px var(--primary-subtle);
+  box-shadow: var(--clay-shadow-inset), 0 0 0 3px var(--primary-subtle);
 }
 
 /* ── skeleton loader ────────────────────────────────────────────────────── */
@@ -1825,8 +1776,8 @@ table.records tbody tr:hover {
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: var(--surface-sunken);
-  border-radius: var(--radius);
+  background: var(--clay-bg);
+  border-radius: var(--clay-radius);
 }
 
 .skeleton::after {
@@ -1837,7 +1788,7 @@ table.records tbody tr:hover {
   background: linear-gradient(
     90deg,
     transparent,
-    var(--hover),
+    var(--clay-surface),
     transparent
   );
   animation: shimmer var(--dur-slower) var(--ease-in-out) infinite;
@@ -1847,6 +1798,7 @@ table.records tbody tr:hover {
   height: var(--text-base);
   margin-bottom: var(--space-2);
   border-radius: var(--radius-sm);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .skeleton-title {
@@ -1854,6 +1806,7 @@ table.records tbody tr:hover {
   width: 40%;
   margin-bottom: var(--space-4);
   border-radius: var(--radius-sm);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .skeleton-line {
@@ -1861,17 +1814,39 @@ table.records tbody tr:hover {
   width: 60%;
   margin-bottom: var(--space-1);
   border-radius: var(--radius-sm);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 .skeleton-circle {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: var(--radius-full);
+  background: var(--clay-bg);
+  box-shadow: var(--clay-shadow-inset);
 }
 
 /* ── body cross-fade on theme change ────────────────────────────────────── */
 
 body {
+  margin: 0;
+  background: var(--clay-bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   transition: background-color var(--dur-base) var(--ease-out),
     color var(--dur-base) var(--ease-out);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--primary-subtle);
+  color: var(--primary-subtle-fg);
 }
