@@ -43,9 +43,7 @@ function parse<T extends z.ZodTypeAny>(schema: T, body: unknown): z.infer<T> {
  }
  throw validationFailed(details);
  }
- // `safeParse` widens `data` to `any` on the generic branch. Re-running the
- // schema restores the caller's inferred type so no `any` escapes this helper.
- return schema.parse(parsed.data) as z.infer<T>;
+ return schema.parse(parsed.data);
 }
 
 //  authenticated: managing your own second factor 

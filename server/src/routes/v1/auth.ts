@@ -92,9 +92,7 @@ function fieldErrors(err: z.ZodError): Record<string, string> {
 const parse = <T extends z.ZodTypeAny>(schema: T, body: unknown): z.infer<T> => {
  const parsed = schema.safeParse(body);
  if (!parsed.success) throw validationFailed(fieldErrors(parsed.error));
- // `safeParse` widens `data` to `any` on the generic branch. Re-wrapping the
- // schema restores the caller's inferred type, so no `any` escapes this helper.
- return schema.parse(parsed.data) as z.infer<T>;
+ return schema.parse(parsed.data);
 };
 
 //  routes 
